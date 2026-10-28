@@ -5,6 +5,7 @@ Dutch web app for finding and organising sport activities together (map, activit
 ## Stack & layout
 
 - `backend/app/` — FastAPI package, raw SQL via psycopg 3 (`dict_row`), no ORM. `main.py` only wires routers; endpoints live in `routers/` (`auth`, `profile` incl. public `/users/{id}`, `friends`, `messages` incl. `/chats`, `activities`, `chat`, `notifications`). Shared: `config.py` (env), `db.py` (connection + SQL snippets `LOCAL_NOW_SQL`, `ACTIVITY_NOT_PAST_SQL`, `AGE_SQL`), `security.py` (session cookie, rate limiters), `schemas.py`, `notifications.py`, `ages.py`, `mailer.py` (Resend, optional `RESEND_API_KEY`).
+- `tools/ui-audit/run.sh "<ids>"` — headless Chromium (Playwright in Docker): main user flows plus screenshots of every screen in light/dark, desktop/phone, with an axe-core contrast check, console errors and failed requests. Needs some `[TEST]` activities. Run it after UI changes; the owner re-tests everything after each change.
 - `backend/tests/` — pytest API tests (in-process TestClient, real DB, both test accounts). Run `backend/run-tests.sh`; run them after every backend change.
 - `frontend/` — Next.js 16 (App Router, Turbopack, Tailwind 4), React 19, react-leaflet. Read `frontend/AGENTS.md`: this Next.js version differs from training data; check `frontend/node_modules/next/dist/docs/` before using unfamiliar APIs.
 - `frontend/src/app/api/**/route.ts` — thin proxies that forward the browser's cookie to the backend (`API_INTERNAL_URL`, default `http://api:8000`). The browser never talks to FastAPI directly.
@@ -21,6 +22,8 @@ Dutch web app for finding and organising sport activities together (map, activit
 - Notify users via `create_notification(conn, user_id, categorie, titel, inhoud, activiteit_id=..., doel_url=...)`; categories are in `NOTIFICATION_CATEGORIES`.
 - Activity status values: `OPEN`, `GEANNULEERD`. Activity `niveau`: `Alle niveaus`, `Beginner`, `Gemiddeld`, `Gevorderd`.
 - `GET /activities` requires login, hides activities that started more than 3 hours ago, and returns cancelled ones only to their organizer and participants.
+- Locations: address search (`/api/geocode/autocomplete`) or a point picked on the map (`LocationMapPicker`, reverse geocoded via `/api/geocode/reverse`, Geoapify); both give the same location shape.
+- `/api/auth/me` answers 200 `{user: null}` when logged out (not 401), so the session check doesn't log errors.
 - Start times are Dutch local time (timestamp without time zone); other `timestamp` columns hold UTC (DB session is UTC). Return those with `AT TIME ZONE 'UTC'` so the frontend gets an offset.
 - Users have `geboortedatum`; APIs return only the computed `leeftijd` (`AGE_SQL`), never the birth date. Minimum age 13.
 - Sessions: the cookie carries `"GEBRUIKER".sessie_versie` and every request checks it; a password reset, a password change (`POST /auth/password/change`, keeps the current session) and "overal uitloggen" (`POST /auth/logout-everywhere`) raise it. Password reset: `POST /auth/password-reset/request` (always the same answer) and `/confirm`; links `{APP_URL}/wachtwoord-herstellen?token=…`, valid 60 min, one use, only the SHA-256 hash is stored in `"WACHTWOORD_HERSTEL"`.

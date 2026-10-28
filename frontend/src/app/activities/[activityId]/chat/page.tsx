@@ -85,7 +85,7 @@ function ActivityChatContent() {
         chatResponse.json(), meResponse.json(), messagesResponse.json(),
       ]);
 
-      if (meResponse.status === 401) {
+      if (!meData?.user) {
         router.replace("/");
         return;
       }
@@ -218,9 +218,9 @@ function ActivityChatContent() {
             ← Terug
           </button>
           <div style={styles.headerCopy}>
-            <div style={styles.eyebrow}>SPORTCONNECT · GROEPSCHAT</div>
+            <div className="chat-eyebrow" style={styles.eyebrow}>SPORTCONNECT · GROEPSCHAT</div>
             <h1 style={styles.title}>{activity?.titel ?? (loading ? "Chat laden…" : "Groepschat")}</h1>
-            <p style={styles.subtitle}>
+            <p className="chat-subtitle" style={styles.subtitle}>
               {activity?.starttijd ? formatDate(activity.starttijd) : "Gesprek met deelnemers"}
               {place ? ` · ${place}` : ""}
             </p>
@@ -279,7 +279,7 @@ function ActivityChatContent() {
           <button type="submit" disabled={loading || sending || !draft.trim()} style={styles.sendButton}>
             {sending ? "Versturen…" : "Verstuur"}
           </button>
-          <div style={styles.composerHint}>Enter om te versturen · Shift + Enter voor een nieuwe regel</div>
+          <div className="chat-composer-hint" style={styles.composerHint}>Enter om te versturen · Shift + Enter voor een nieuwe regel</div>
         </form>
       </section>
       </div>
@@ -294,9 +294,9 @@ const styles: Record<string, CSSProperties> = {
   header: { display: "flex", alignItems: "center", gap: 18, padding: "22px 26px", borderBottom: "1px solid #e8eee9", background: "#fff" },
   backButton: { border: "1px solid #dbe6dc", background: "#fff", borderRadius: 10, padding: "10px 12px", color: "#2c5036", cursor: "pointer", whiteSpace: "nowrap" },
   headerCopy: { minWidth: 0, flex: 1 },
-  eyebrow: { fontSize: 10, letterSpacing: 1.4, fontWeight: 800, color: "#32814a", marginBottom: 5 },
+  eyebrow: { fontSize: 10, letterSpacing: 1.4, fontWeight: 800, color: "#047857", marginBottom: 5 },
   title: { margin: 0, fontSize: 22, fontWeight: 750, lineHeight: 1.25, overflowWrap: "anywhere" },
-  subtitle: { margin: "6px 0 0", fontSize: 13, color: "#69766c" },
+  subtitle: { margin: "6px 0 0", fontSize: 13, color: "#5b6b61" },
   statusPill: { borderRadius: 999, padding: "7px 11px", fontSize: 12, fontWeight: 700, color: "#28753e", background: "#eaf6ec", whiteSpace: "nowrap" },
   messages: { flex: 1, overflowY: "auto", padding: "24px clamp(14px, 4vw, 32px)", background: "linear-gradient(180deg, #fbfdfb 0%, #f7faf7 100%)" },
   emptyState: { minHeight: 260, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", color: "#66756a", gap: 8, maxWidth: 400, margin: "0 auto" },
@@ -315,7 +315,7 @@ const styles: Record<string, CSSProperties> = {
   composer: { display: "flex", alignItems: "flex-end", gap: 12, flexWrap: "wrap", padding: "18px 22px 14px", borderTop: "1px solid #e5ece6", background: "#fff" },
   input: { flex: "1 1 400px", resize: "vertical", minHeight: 52, maxHeight: 150, border: "1px solid #d7e2d9", borderRadius: 13, padding: "13px 14px", font: "inherit", fontSize: 14, outlineColor: "#32814a", color: "#17231b", background: "#fbfdfb" },
   sendButton: { minHeight: 48, border: 0, borderRadius: 12, padding: "0 22px", color: "#fff", background: "#24783c", fontWeight: 750, cursor: "pointer" },
-  composerHint: { flexBasis: "100%", fontSize: 11, color: "#8a968d", marginTop: -5, paddingLeft: 3 },
+  composerHint: { flexBasis: "100%", fontSize: 11, color: "#5b6b61", marginTop: -5, paddingLeft: 3 },
 };
 
 export default function ActivityChatPage() {

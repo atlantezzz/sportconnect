@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import LocationMapPicker from "@/components/LocationMapPicker";
 
 export type GeoapifyLocation = {
   id: string | null;
@@ -39,6 +40,7 @@ export default function LocationAutocomplete({
   const [suggestions, setSuggestions] = useState<GeoapifyLocation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
     const query = value.trim();
@@ -164,9 +166,33 @@ export default function LocationAutocomplete({
         </p>
       )}
 
-      <p className="mt-1 text-xs font-normal text-gray-500">
-        Selecteer een adres uit de resultaten om de juiste locatie op de kaart vast te leggen.
-      </p>
+      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-normal text-gray-500">
+          Selecteer een adres uit de resultaten, of kies het punt zelf op de kaart.
+        </p>
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          disabled={disabled}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-700 px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21Z" strokeLinejoin="round" /><circle cx="12" cy="10" r="2.3" /></svg>
+          Kies op kaart
+        </button>
+      </div>
+
+      {pickerOpen && (
+        <LocationMapPicker
+          initial={selected}
+          onClose={() => setPickerOpen(false)}
+          onConfirm={(location) => {
+            onSelect(location);
+            setSuggestions([]);
+            setError("");
+            setPickerOpen(false);
+          }}
+        />
+      )}
     </>
   );
 }

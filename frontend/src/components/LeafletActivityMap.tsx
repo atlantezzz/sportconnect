@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo } from "react";
 import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
 import { divIcon, latLngBounds } from "leaflet";
 import type { Activity } from "@/types/activity";
 import { sportEmoji } from "@/data/activities";
+import { useDocumentTheme } from "@/lib/useDocumentTheme";
 
 type Props = {
   activities: Activity[];
@@ -18,23 +19,9 @@ const DEFAULT_CENTER: [number, number] = [51.4416, 5.4697];
 // OpenStreetMap tiles (no API key). Dark mode darkens the same tiles with a CSS
 // filter on the tile layer only (see .activity-map[data-map-theme="dark"] in
 // globals.css), so pins keep their colours. CARTO's styles need an API key.
-const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-const ATTRIBUTION =
+export const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+export const ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-bijdragers';
-
-// Follows data-theme on <html>, which the theme toggle changes.
-function subscribeToTheme(onChange: () => void) {
-  const observer = new MutationObserver(onChange);
-  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  return () => observer.disconnect();
-}
-function useDocumentTheme(): "light" | "dark" {
-  return useSyncExternalStore(
-    subscribeToTheme,
-    () => (document.documentElement.dataset.theme === "dark" ? "dark" : "light"),
-    () => "light",
-  );
-}
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);

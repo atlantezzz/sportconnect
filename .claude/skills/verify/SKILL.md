@@ -52,4 +52,7 @@ Prefix every activity title or message you create with `[TEST]`, and delete or c
 
 ## UI changes
 
+Run `tools/ui-audit/run.sh "<activity ids>"` (create a few `[TEST]` activities first, clean up with `backend/scripts/verwijder_testdata.sql`). It must report 0 contrast violations, 0 console errors and 0 failed requests; look at the screenshots in `tools/ui-audit/out/`.
+
+
 Use the `/run` or `claude-in-chrome` skill to view `http://localhost:3000` (localhost, so the Secure cookie works). Check light and dark theme and a ~400px-wide viewport.

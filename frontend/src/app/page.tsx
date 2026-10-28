@@ -162,7 +162,8 @@ export default function Home() {
 
          const result = await response.json();
 
-         if (!cancelled && result.user?.naam) {
+         if (!result.user) return;
+         if (!cancelled && result.user.naam) {
            setCurrentUserName(result.user.naam);
 	   setCurrentUserId(result.user.gebruiker_id);
          }

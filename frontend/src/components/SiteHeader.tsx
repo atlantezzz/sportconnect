@@ -151,10 +151,12 @@ export default function SiteHeader({ theme, onThemeToggle, userName, showMapTogg
 
   return <header className="site-header relative z-50 flex h-16 shrink-0 items-center justify-between gap-3 border-b px-3 sm:px-6 md:px-8">
     <button type="button" onClick={home} className="site-logo flex min-w-0 items-center rounded-lg" aria-label="Naar de SportConnect-hoofdpagina">
-      <Image src="/sportconnect-logo-light.png" alt="SportConnect" width={720} height={157} priority className="h-8 w-auto max-w-[46vw] object-contain sm:h-9" />
+      {/* Runner mark on phones, full logo from sm up. */}
+      <Image src="/sportconnect-mark.png" alt="SportConnect" width={160} height={160} priority className="h-10 w-10 sm:hidden" />
+      <Image src="/sportconnect-logo-light.png" alt="SportConnect" width={720} height={157} priority className="hidden h-9 w-auto object-contain sm:block" />
     </button>
 
-    <nav className="flex items-center gap-1 sm:gap-1.5" aria-label="Hoofdmenu">
+    <nav className="site-header-nav flex items-center gap-1 sm:gap-2" aria-label="Hoofdmenu">
       <button type="button" onClick={onThemeToggle} className="header-icon-button" aria-label={theme === "light" ? "Donkere modus inschakelen" : "Lichte modus inschakelen"} title={theme === "light" ? "Donkere modus" : "Lichte modus"}>
         {theme === "light"
           ? <svg {...iconProps} className="h-5 w-5"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" /></svg>
@@ -214,9 +216,9 @@ export default function SiteHeader({ theme, onThemeToggle, userName, showMapTogg
         <button type="button" onClick={() => router.push("/profile")} className={`header-avatar ${pathname === "/profile" ? "is-active" : ""}`} aria-current={pathname === "/profile" ? "page" : undefined} aria-label={`Profiel van ${userName} openen`} title="Profiel">
           {initial}
         </button>
-        <button type="button" onClick={logout} className="header-icon-button lg:w-auto lg:px-3" aria-label="Uitloggen" title="Uitloggen">
-          <svg {...iconProps} className="h-5 w-5"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3" /></svg>
-          <span className="hidden text-sm font-semibold lg:ml-2 lg:inline">Uitloggen</span>
+        <button type="button" onClick={logout} className="header-logout" aria-label="Uitloggen" title="Uitloggen">
+          <svg {...iconProps} className="h-[18px] w-[18px] shrink-0"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3" /></svg>
+          <span className="hidden lg:inline">Uitloggen</span>
         </button>
       </>}
 
