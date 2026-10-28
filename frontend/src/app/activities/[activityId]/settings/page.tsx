@@ -20,6 +20,7 @@ type ActivityRow = {
   lengtegraad: number | null;
   externe_locatie_id: string | null;
   maximaal_aantal_deelnemers: number;
+  niveau: string;
   status: string;
   sport: string;
   aantal_deelnemers: number;
@@ -35,6 +36,7 @@ type SettingsForm = {
   titel: string;
   beschrijving: string;
   datumtijd: string;
+  niveau: string;
   capaciteit: number;
 };
 
@@ -82,6 +84,16 @@ function savedLocation(row: ActivityRow): GeoapifyLocation | null {
   };
 }
 
+// In the overlay on the home page this page runs in an iframe: tell the parent,
+// which closes the overlay, refreshes the list and shows the message.
+function finishAndLeave(message: string, navigateHome: () => void) {
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: "sportconnect:activity-changed", message }, window.location.origin);
+  } else {
+    navigateHome();
+  }
+}
+
 export default function ActivitySettingsPage() {
   return (
     <Suspense fallback={<main className="p-6">Instellingen laden...</main>}>
@@ -111,6 +123,7 @@ function ActivitySettingsContent() {
     titel: "",
     beschrijving: "",
     datumtijd: "",
+    niveau: "Alle niveaus",
     capaciteit: 2,
   });
   const [locationText, setLocationText] = useState("");
@@ -160,6 +173,7 @@ function ActivitySettingsContent() {
         titel: found.titel,
         beschrijving: found.beschrijving ?? "",
         datumtijd: toLocalDateTime(found.starttijd),
+        niveau: found.niveau ?? "Alle niveaus",
         capaciteit: found.maximaal_aantal_deelnemers,
       });
       setLocationText(found.locatie_naam ?? "");
@@ -229,6 +243,7 @@ function ActivitySettingsContent() {
           titel: form.titel.trim(),
           beschrijving: form.beschrijving.trim() || null,
           starttijd: form.datumtijd,
+          niveau: form.niveau,
           locatie_naam: selectedLocation.formatted,
           woonplaats: selectedLocation.woonplaats,
           straatnaam: selectedLocation.straatnaam,
@@ -306,9 +321,8 @@ function ActivitySettingsContent() {
         throw new Error(errorMessage(data, "Overdracht mislukt."));
       }
 
-      window.alert("Het organisatorschap is overgedragen.");
-      router.push("/");
-      router.refresh();
+      setSuccess("Het organisatorschap is overgedragen.");
+      finishAndLeave("Het organisatorschap is overgedragen.", () => router.push("/"));
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Overdracht mislukt.",
@@ -334,9 +348,8 @@ function ActivitySettingsContent() {
         throw new Error(errorMessage(data, "Annuleren mislukt."));
       }
 
-      window.alert("De activiteit is geannuleerd.");
-      router.push("/");
-      router.refresh();
+      setSuccess("De activiteit is geannuleerd.");
+      finishAndLeave("De activiteit is geannuleerd.", () => router.push("/"));
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Annuleren mislukt.",
@@ -515,6 +528,21 @@ function ActivitySettingsContent() {
                 disabled={!isOpen || saving}
               />
             </div>
+
+            <label className={labelClass}>
+              Niveau
+              <select
+                value={form.niveau}
+                onChange={(event) => setForm({ ...form, niveau: event.target.value })}
+                className={inputClass}
+                disabled={!isOpen || saving}
+              >
+                <option>Alle niveaus</option>
+                <option>Beginner</option>
+                <option>Gemiddeld</option>
+                <option>Gevorderd</option>
+              </select>
+            </label>
 
             <label className={labelClass}>
               Maximumaantal deelnemers

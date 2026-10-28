@@ -215,35 +215,26 @@ export default function ActivityDetails({
                   />
                 </div>
 
-                <div className="mt-4 divide-y divide-gray-100">
-                  {activity.memberNames.map((name, index) => (
-                    <div
-                      key={`${activity.id}-${name}`}
-                      className="flex items-center gap-3 py-3"
-                    >
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50 text-sm font-semibold text-emerald-800">
-                        {name.charAt(0).toUpperCase()}
-                      </span>
-
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-gray-800">
-                          {name}
-                        </p>
-                        {name === activity.organizer && (
-                          <p className="text-xs text-gray-500">
-                            Organisator
-                          </p>
-                        )}
-                      </div>
-
-                      {index === 0 && name !== activity.organizer && (
-                        <span className="ml-auto text-xs text-gray-400">
-                          Deelnemer
+                <ul className="mt-4 divide-y divide-gray-100">
+                  {(activity.members ?? []).map((member) => (
+                    <li key={`${activity.id}-${member.id}`}>
+                      <a
+                        href={`/users/${member.id}`}
+                        className="flex items-center gap-3 rounded-lg py-3 hover:bg-emerald-50/60"
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50 text-sm font-semibold text-emerald-800">
+                          {member.name.charAt(0).toUpperCase()}
                         </span>
-                      )}
-                    </div>
+                        <span className="min-w-0 truncate text-sm font-medium text-gray-800">
+                          {member.name}
+                        </span>
+                        <span className="ml-auto text-xs text-gray-500">
+                          {member.id === activity.organizerId ? "Organisator" : "Deelnemer"}
+                        </span>
+                      </a>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </section>
 
               <section className="rounded-xl border border-gray-200 p-4">
@@ -251,20 +242,23 @@ export default function ActivityDetails({
                   Organisator
                 </h2>
 
-                <div className="mt-3 flex items-center gap-3">
+                <a
+                  href={activity.organizerId ? `/users/${activity.organizerId}` : undefined}
+                  className="mt-3 flex items-center gap-3 rounded-lg hover:bg-emerald-50/60"
+                >
                   <span className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-700 text-base font-semibold text-white">
                     {activity.organizer.charAt(0).toUpperCase()}
                   </span>
 
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {activity.organizer}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Organisator van deze activiteit
-                    </p>
-                  </div>
-                </div>
+                  <span>
+                    <span className="block font-medium text-gray-900">
+                      {isOrganizer ? `${activity.organizer} (jij)` : activity.organizer}
+                    </span>
+                    <span className="block text-sm text-gray-500">
+                      Bekijk profiel
+                    </span>
+                  </span>
+                </a>
               </section>
 
               {(isOrganizer || hasJoined) &&
@@ -321,10 +315,10 @@ export default function ActivityDetails({
                     <>
                       <p className="text-sm leading-6 text-gray-600">
                         {hasJoined
-                          ? "Je bent toegevoegd aan de deelnemerslijst. Deze wijziging is tijdelijk en wordt nog niet online opgeslagen."
+                          ? "Je staat op de deelnemerslijst. De organisator en andere deelnemers zien dat je meedoet."
                           : isFull
                             ? "Deze activiteit heeft het maximale aantal deelnemers bereikt."
-                            : "Er is nog plek bij deze activiteit. Je kunt je tijdelijk aanmelden om de frontend te testen."}
+                            : "Er is nog plek bij deze activiteit. Meld je aan om mee te doen en toegang te krijgen tot de groepschat."}
                       </p>
 
                       {hasJoined ? (

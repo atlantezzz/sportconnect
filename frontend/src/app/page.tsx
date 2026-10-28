@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import ActivityCard from "@/components/ActivityCard";
 import ActivityForm, { type NewActivityInput } from "@/components/ActivityForm";
 import ActivityDetails from "@/components/ActivityDetails";
@@ -10,6 +10,7 @@ import AuthModal, { type AuthMode } from "@/components/AuthModal";
 import type { Activity } from "@/types/activity";
 import SportPreferencesModal from "@/components/SportPreferencesModal";
 import SiteHeader from "@/components/SiteHeader";
+import LandingPage from "@/components/LandingPage";
 
 type ActivityFilter = "all" | "mine" | "joined" | "friends";
 
@@ -26,8 +27,89 @@ async function fetchSportPreferences(): Promise<SportPreferences | null> {
   }
 }
 
+// Current activities for the logged-in user, mapped for the UI (ids offset by 100000).
+async function fetchActivityList(): Promise<Activity[] | null> {
+  try {
+    const response = await fetch("/api/activities", { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error("Activiteiten ophalen mislukt");
+    }
+
+        const rows: {
+	  maker_id: number;
+      activiteit_id: number;
+      titel: string;
+      beschrijving: string | null;
+      starttijd: string;
+      niveau: string;
+      locatie_naam: string | null;
+      woonplaats: string | null;
+      straatnaam?: string | null;
+      huisnummer?: string | null;
+      postcode?: string | null;
+      land?: string | null;
+      breedtegraad?: number | null;
+      lengtegraad?: number | null;
+      externe_locatie_id?: string | null;
+      maximaal_aantal_deelnemers: number;
+      status: string;
+      sport: string;
+      organisator_naam: string;
+      deelnemers: string[];
+      deelnemer_ids: number[];
+	  aantal_deelnemers: number;
+    }[] = await response.json();
+
+    const databaseActivities: Activity[] = rows.map((row) => {
+      const start = new Date(row.starttijd);
+      const dateLabel = start.toLocaleDateString("nl-NL", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      });
+      const timeLabel = start.toLocaleTimeString("nl-NL", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      return {
+        id: 100000 + row.activiteit_id,
+        sport: row.sport,
+        title: row.titel,
+        location: [row.locatie_naam, row.woonplaats]
+          .filter(Boolean)
+          .join(", "),
+        latitude: row.breedtegraad ?? null,
+        longitude: row.lengtegraad ?? null,
+        time: `${dateLabel.charAt(0).toUpperCase()}${dateLabel.slice(1)}, ${timeLabel}`,
+        participants: row.aantal_deelnemers,
+        capacity: row.maximaal_aantal_deelnemers,
+        level: row.niveau ?? "Alle niveaus",
+        description: row.beschrijving ?? "",
+        organizer: row.organisator_naam,
+        organizerId: row.maker_id,
+        members: (row.deelnemer_ids ?? []).map((memberId, index) => ({ id: memberId, name: row.deelnemers?.[index] ?? "Deelnemer" })),
+        memberNames: [
+          ...new Set(
+            [row.organisator_naam, ...(row.deelnemers ?? [])].filter(
+              (name): name is string => Boolean(name)
+            )
+          ),
+        ],
+        x: 20 + ((row.activiteit_id * 17) % 60),
+        y: 20 + ((row.activiteit_id * 23) % 60),
+        status: row.status === "GEANNULEERD" ? "GEANNULEERD" : undefined,
+      };
+    });
+
+    return databaseActivities;
+  } catch (error) {
+    console.error("SportConnect-activiteiten laden:", error);
+    return null;
+  }
+}
+
 export default function Home() {
-  // Tijdelijke frontendstatus; gegevens worden niet op een server opgeslagen.
   const [activityList, setActivityList] = useState<Activity[]>([]);
   const [joinedActivityIds, setJoinedActivityIds] = useState<number[]>([]);
   const [authMode, setAuthMode] = useState<AuthMode | null>(null);
@@ -50,7 +132,8 @@ export default function Home() {
   const [location, setLocation] = useState("");
   const [selectedActivityId, setSelectedActivityId] = useState<number | null>(null);
   const [sportIds, setSportIds] = useState<Record<string, number>>({});
-  const [friendNames, setFriendNames] = useState<string[]>([]);
+  const [friendIds, setFriendIds] = useState<number[]>([]);
+  const [notice, setNotice] = useState<{ text: string; tone: "error" | "success" } | null>(null);
   useEffect(() => {
     const storedTheme = window.localStorage.getItem("sportconnect-theme");
     if (storedTheme === "dark" || storedTheme === "light") setTheme(storedTheme);
@@ -129,98 +212,42 @@ export default function Home() {
      loadSports();
    }, []);
    useEffect(() => {
-     if (!currentUserId) { setFriendNames([]); return; }
+     if (!currentUserId) { setFriendIds([]); return; }
      let cancelled = false;
      fetch("/api/friends", { cache: "no-store" })
        .then((r) => r.ok ? r.json() : [])
-       .then((data) => { if (!cancelled) setFriendNames(Array.isArray(data.friends) ? data.friends.map((f: { naam: string }) => f.naam) : []); })
-       .catch(() => { if (!cancelled) setFriendNames([]); });
+       .then((data) => { if (!cancelled) setFriendIds(Array.isArray(data.friends) ? data.friends.map((f: { gebruiker_id: number }) => f.gebruiker_id) : []); })
+       .catch(() => { if (!cancelled) setFriendIds([]); });
      return () => { cancelled = true; };
    }, [currentUserId]);
-   useEffect(() => {
-    async function loadActivities() {
-      if (!authChecked) return;
-      try {
-        const response = await fetch("/api/activities");
+  const loadActivities = useCallback(async () => {
+    // Activities are only available to logged-in users (logging out reloads the page).
+    if (currentUserId === null) return;
+    const list = await fetchActivityList();
+    if (list) setActivityList(list);
+  }, [currentUserId]);
 
-        if (!response.ok) {
-          throw new Error("Activiteiten ophalen mislukt");
-        }
-
-        const rows: {
-	  maker_id: number;
-          activiteit_id: number;
-          titel: string;
-          beschrijving: string | null;
-          starttijd: string;
-          locatie_naam: string | null;
-          woonplaats: string | null;
-          straatnaam?: string | null;
-          huisnummer?: string | null;
-          postcode?: string | null;
-          land?: string | null;
-          breedtegraad?: number | null;
-          lengtegraad?: number | null;
-          externe_locatie_id?: string | null;
-          maximaal_aantal_deelnemers: number;
-          status: string;
-          sport: string;
-          organisator_naam: string;
-          deelnemers: string[];
-	  aantal_deelnemers: number;
-        }[] = await response.json();
-
-        const databaseActivities: Activity[] = rows.map((row) => {
-          const start = new Date(row.starttijd);
-          const dateLabel = start.toLocaleDateString("nl-NL", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-          });
-          const timeLabel = start.toLocaleTimeString("nl-NL", {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-
-          return {
-            id: 100000 + row.activiteit_id,
-            sport: row.sport,
-            title: row.titel,
-            location: [row.locatie_naam, row.woonplaats]
-              .filter(Boolean)
-              .join(", "),
-            latitude: row.breedtegraad ?? null,
-            longitude: row.lengtegraad ?? null,
-            time: `${dateLabel.charAt(0).toUpperCase()}${dateLabel.slice(1)}, ${timeLabel}`,
-            participants: row.aantal_deelnemers,
-            capacity: row.maximaal_aantal_deelnemers,
-            level: "Alle niveaus",
-            description: row.beschrijving ?? "",
-            organizer: 
-	      currentUserId !== null && row.maker_id === currentUserId
-		? "Jij"
-		: "Organisator",
-            memberNames: [
-              ...new Set(
-                [row.organisator_naam, ...(row.deelnemers ?? [])].filter(
-                  (name): name is string => Boolean(name)
-                )
-              ),
-            ],
-            x: 20 + ((row.activiteit_id * 17) % 60),
-            y: 20 + ((row.activiteit_id * 23) % 60),
-            status: row.status === "GEANNULEERD" ? "GEANNULEERD" : undefined,
-          };
-        });
-
-        setActivityList(databaseActivities);
-      } catch (error) {
-        console.error("SportConnect-activiteiten laden:", error);
-      }
-    }
-
-    loadActivities();
+  useEffect(() => {
+    if (!authChecked || currentUserId === null) return;
+    let cancelled = false;
+    void fetchActivityList().then((list) => {
+      if (!cancelled && list) setActivityList(list);
+    });
+    return () => { cancelled = true; };
   }, [authChecked, currentUserId]);
+
+  // The settings overlay (iframe) reports changes such as cancelling or transferring.
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin || event.data?.type !== "sportconnect:activity-changed") return;
+      setSettingsOverlayActivityId(null);
+      setSelectedActivityId(null);
+      if (typeof event.data.message === "string") setNotice({ text: event.data.message, tone: "success" });
+      void loadActivities();
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [loadActivities]);
   useEffect(() => {
     if (!authChecked || activityList.length === 0) return;
 
@@ -259,11 +286,11 @@ export default function Home() {
       if (hiddenSports.includes(activity.sport)) return false;
 
       const isFriendActivity =
-        (activity.organizer !== "Jij" && friendNames.includes(activity.organizer)) ||
-        activity.memberNames.some((name) => friendNames.includes(name));
+        (activity.organizerId !== undefined && friendIds.includes(activity.organizerId)) ||
+        (activity.members ?? []).some((member) => friendIds.includes(member.id));
       const matchesOwnership =
         activityFilter === "all" ||
-        (activityFilter === "mine" && activity.organizer === "Jij") ||
+        (activityFilter === "mine" && activity.organizerId === currentUserId) ||
         (activityFilter === "joined" && joinedActivityIds.includes(activity.id)) ||
         (activityFilter === "friends" && isFriendActivity);
 
@@ -297,7 +324,8 @@ export default function Home() {
     joinedActivityIds,
     hiddenSports,
     favoriteSports,
-    friendNames,
+    friendIds,
+    currentUserId,
   ]);
 
   useEffect(() => {
@@ -347,15 +375,10 @@ export default function Home() {
 
     if (
       !activity ||
-      activity.organizer === "Jij" ||
+      activity.organizerId === currentUserId ||
       activity.participants >= activity.capacity ||
       joinedActivityIds.includes(activityId)
     ) {
-      return;
-    }
-
-    if (activityId < 100000) {
-      window.alert("Deze voorbeeldactiviteit is nog niet opgeslagen in de database.");
       return;
     }
 
@@ -375,32 +398,14 @@ export default function Home() {
       setJoinedActivityIds((current) =>
         current.includes(activityId) ? current : [...current, activityId]
       );
-
-      setActivityList((current) =>
-        current.map((item) =>
-          item.id === activityId
-            ? {
-                ...item,
-                participants: Math.min(item.capacity, item.participants + 1),
-                memberNames: [...item.memberNames, currentUserName ?? "Jij"],
-              }
-            : item
-        )
-      );
+      await loadActivities();
     } catch (error) {
-      window.alert(
-        error instanceof Error ? error.message : "Aanmelden is mislukt."
-      );
+      setNotice({ text: error instanceof Error ? error.message : "Aanmelden is mislukt.", tone: "error" });
     }
   }
 
   async function leaveActivity(activityId: number) {
   if (!joinedActivityIds.includes(activityId)) return;
-
-    if (activityId < 100000) {
-      window.alert("Deze voorbeeldactiviteit is nog niet opgeslagen in de database.");
-      return;
-    }
 
     try {
       const response = await fetch(
@@ -418,110 +423,51 @@ export default function Home() {
       setJoinedActivityIds((current) =>
         current.filter((id) => id !== activityId)
       );
-
-      setActivityList((current) =>
-        current.map((item) =>
-          item.id === activityId
-            ? {
-                ...item,
-                participants: Math.max(0, item.participants - 1),
-                memberNames: item.memberNames.filter((name) => name !== (currentUserName ?? "Jij")),
-              }
-            : item
-        )
-      );
+      await loadActivities();
     } catch (error) {
-      window.alert(
-        error instanceof Error ? error.message : "Afmelden is mislukt."
-      );
+      setNotice({ text: error instanceof Error ? error.message : "Afmelden is mislukt.", tone: "error" });
     }
   }
 
 
+  // Errors are thrown so the form can show them inline (and re-enable its button).
   async function createActivity(input: NewActivityInput) {
     if (!sportIds[input.sport]) {
-      window.alert(
-        `De sport '${input.sport}' is nog niet beschikbaar. Probeer de pagina te verversen.`,
-      );
-      return;
+      throw new Error(`De sport '${input.sport}' is nog niet beschikbaar. Probeer de pagina te verversen.`);
     }
-    try {
-      const response = await fetch("/api/activities", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          sport_id: sportIds[input.sport],
-          titel: input.title,
-          beschrijving: input.description || null,
-          starttijd: `${input.date}T${input.startTime}:00`,
-          locatie_naam: input.location.formatted,
-          straatnaam: input.location.straatnaam,
-          huisnummer: input.location.huisnummer,
-          postcode: input.location.postcode,
-          woonplaats: input.location.woonplaats,
-          land: input.location.land,
-          breedtegraad: input.location.breedtegraad,
-          lengtegraad: input.location.lengtegraad,
-          externe_locatie_id: input.location.id,
-          maximaal_aantal_deelnemers: input.capacity,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.detail ?? result.error ?? "Activiteit opslaan is mislukt.",
-        );
-      }
-
-      const id = 100000 + result.activiteit_id;
-      const start = new Date(`${input.date}T${input.startTime}`);
-      const dateLabel = start.toLocaleDateString("nl-NL", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-      });
-      const timeLabel = start.toLocaleTimeString("nl-NL", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-
-      const newActivity: Activity = {
-        id,
-        sport: input.sport,
-        title: input.title,
-        location: input.location.formatted,
-        latitude: input.location.breedtegraad,
-        longitude: input.location.lengtegraad,
-        time: `${dateLabel.charAt(0).toUpperCase()}${dateLabel.slice(1)}, ${timeLabel}`,
-        participants: 1,
-        capacity: input.capacity,
-        level: input.level,
-        description: input.description,
-        organizer: "Jij",
-        memberNames: ["Jij"],
-        x: 20 + ((id * 17) % 60),
-        y: 20 + ((id * 23) % 60),
-      };
-
-      setActivityList((current) => [newActivity, ...current]);
-      setSelectedSport("Alles");
-      setActivityFilter("all");
-      setSearch("");
-      setLocation("");
-      setCreateModalOpen(false);
-      setSelectedActivityId(id);
-    } catch (error) {
-      console.error("Activiteit opslaan:", error);
-      window.alert(
-        error instanceof Error
-          ? error.message
-          : "Activiteit opslaan is mislukt.",
-      );
+    const response = await fetch("/api/activities", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sport_id: sportIds[input.sport],
+        titel: input.title,
+        beschrijving: input.description || null,
+        starttijd: `${input.date}T${input.startTime}:00`,
+        niveau: input.level,
+        locatie_naam: input.location.formatted,
+        straatnaam: input.location.straatnaam,
+        huisnummer: input.location.huisnummer,
+        postcode: input.location.postcode,
+        woonplaats: input.location.woonplaats,
+        land: input.location.land,
+        breedtegraad: input.location.breedtegraad,
+        lengtegraad: input.location.lengtegraad,
+        externe_locatie_id: input.location.id,
+        maximaal_aantal_deelnemers: input.capacity,
+      }),
+    });
+    const result = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(typeof result?.detail === "string" ? result.detail : "Activiteit opslaan is mislukt.");
     }
+
+    await loadActivities();
+    setSelectedSport("Alles");
+    setActivityFilter("all");
+    setSearch("");
+    setLocation("");
+    setCreateModalOpen(false);
+    setSelectedActivityId(100000 + result.activiteit_id);
   }
 
 
@@ -559,7 +505,7 @@ export default function Home() {
             if (!response.ok) throw new Error("Uitloggen is niet bevestigd door de server.");
             setCurrentUserName(null); setCurrentUserId(null); setSelectedActivityId(null); setPreferencesOpen(false); setChatLauncherOpen(false); setFavoriteSports([]); setHiddenSports([]);
             window.location.replace("/");
-          } catch (error) { console.error("Uitloggen mislukt:", error); alert("Uitloggen is niet gelukt. Probeer het opnieuw."); }
+          } catch (error) { console.error("Uitloggen mislukt:", error); setNotice({ text: "Uitloggen is niet gelukt. Probeer het opnieuw.", tone: "error" }); }
         }}
       />
 
@@ -568,30 +514,7 @@ export default function Home() {
           <div className="text-center"><div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-700" /><p className="text-sm text-gray-600">SportConnect laden…</p></div>
         </section>
       ) : !currentUserName ? (
-        <section className="landing-page min-h-0 flex-1 overflow-y-auto bg-[#f5f8f3]">
-          <div className="landing-hero mx-auto grid max-w-7xl items-center gap-12 px-5 py-12 sm:px-8 sm:py-20 lg:grid-cols-[1.02fr_0.98fr] lg:px-12">
-            <div className="max-w-2xl">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-emerald-800"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Sport is leuker samen</div>
-              <h1 className="text-4xl font-black leading-[1.06] tracking-tight text-gray-950 sm:text-5xl lg:text-6xl">Vind jouw team.<br/><span className="text-emerald-700">Kom in beweging.</span></h1>
-              <p className="mt-6 max-w-xl text-base leading-7 text-gray-600 sm:text-lg">Ontdek sportactiviteiten bij jou in de buurt, sluit aan bij anderen en organiseer zelf een potje. Van een spontane hardloopsessie tot een wekelijkse teamsport.</p>
-              <div className="mt-8 flex flex-wrap gap-3"><button type="button" onClick={() => setAuthMode("register")} className="rounded-full bg-emerald-700 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-900/15 transition hover:-translate-y-0.5 hover:bg-emerald-800">Maak gratis een account <span className="ml-2">→</span></button><button type="button" onClick={() => setAuthMode("login")} className="rounded-full border border-gray-300 bg-white px-6 py-3.5 text-sm font-bold text-gray-700 transition hover:border-emerald-500 hover:text-emerald-800">Ik heb al een account</button></div>
-              <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-500"><span>✓ Vind sportmaatjes</span><span>✓ Organiseer activiteiten</span><span>✓ Chat met je groep</span></div>
-            </div>
-            <div className="landing-showcase relative mx-auto w-full max-w-xl">
-              <div className="absolute -right-4 -top-4 h-28 w-28 rounded-full bg-lime-200/70 blur-2xl"/><div className="absolute -bottom-5 -left-4 h-32 w-32 rounded-full bg-emerald-200/70 blur-2xl"/>
-              <div className="landing-showcase-shell relative rounded-[28px] border border-white bg-white p-3 shadow-2xl shadow-emerald-950/10 sm:p-4">
-                <div className="landing-showcase-topbar flex items-center justify-between rounded-2xl bg-[#f5f8f3] px-4 py-3"><div className="flex items-center gap-2"><span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-700 text-sm font-black text-white">S</span><span className="font-bold text-gray-900">Ontdek activiteiten</span></div><span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">In de buurt</span></div>
-                <div className="grid gap-3 p-2 pt-4 sm:grid-cols-[1fr_0.92fr]">
-                  <div className="space-y-3"><div className="landing-preview-card rounded-2xl border border-gray-100 p-3"><div className="flex items-center justify-between"><span className="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-bold text-orange-700">Hardlopen</span><span className="text-xs font-semibold text-emerald-700">● Open</span></div><h3 className="mt-3 font-bold text-gray-900">5 km rustig tempo</h3><p className="mt-1 text-xs text-gray-500">Vandaag · 19:00</p><p className="mt-1 text-xs text-gray-500">Stadswandelpark, Eindhoven</p><div className="mt-3 h-1.5 rounded-full bg-gray-100"><div className="h-1.5 w-2/3 rounded-full bg-emerald-500"/></div><p className="mt-2 text-right text-[11px] text-gray-500">4 van 6 deelnemers</p></div><div className="landing-preview-card rounded-2xl border border-gray-100 p-3"><div className="flex items-center justify-between"><span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-700">Basketbal</span><span className="text-xs font-semibold text-emerald-700">● Open</span></div><h3 className="mt-3 font-bold text-gray-900">Basketbal in Eindhoven</h3><p className="mt-1 text-xs text-gray-500">Morgen · 18:30</p></div></div>
-                  <div className="landing-mini-map relative min-h-56 overflow-hidden rounded-2xl bg-[#e8eee2] p-3"><div className="absolute inset-0 opacity-70" style={{backgroundImage:"linear-gradient(35deg, transparent 46%, #fff 47%, #fff 50%, transparent 51%),linear-gradient(120deg, transparent 44%, #fff 45%, #fff 48%, transparent 49%),linear-gradient(0deg, transparent 48%, #d5e2ce 49%, #d5e2ce 58%, transparent 59%)",backgroundSize:"100% 100%,100% 100%,100% 40%"}}/><span className="absolute left-4 top-5 landing-map-label rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-gray-500 shadow-sm">Strijp-S</span><span className="absolute right-3 top-[38%] landing-map-label rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-gray-500 shadow-sm">Centrum</span><span className="absolute left-[30%] top-[28%] flex h-9 w-9 items-center justify-center landing-map-pin rounded-full border-[3px] border-white bg-emerald-700 text-sm text-white shadow-lg">⌁</span><span className="absolute right-[20%] bottom-[24%] flex h-9 w-9 items-center justify-center landing-map-pin rounded-full border-[3px] border-white bg-orange-500 text-sm text-white shadow-lg">⚽</span><div className="landing-map-tooltip absolute bottom-3 left-3 right-3 rounded-xl bg-white/95 p-3 shadow"><p className="text-xs font-bold text-gray-900">Sport om de hoek</p><p className="mt-1 text-[11px] text-gray-500">Bekijk locaties en vind een activiteit die bij je past.</p></div></div>
-                </div>
-              </div>
-              <div className="landing-showcase-caption absolute -bottom-6 right-4 rounded-2xl border border-white bg-white px-4 py-3 shadow-xl sm:right-8"><p className="text-xs font-semibold text-gray-500">Samen sporten</p><p className="mt-0.5 text-sm font-black text-gray-900">Meer bewegen. Meer ontmoeten.</p></div>
-            </div>
-          </div>
-          <div className="mx-auto grid max-w-7xl gap-4 px-5 pb-12 sm:grid-cols-3 sm:px-8 lg:px-12"><article className="rounded-2xl border border-emerald-100 bg-white p-5"><span className="text-2xl">⌕</span><h2 className="mt-3 font-bold text-gray-900">Ontdek</h2><p className="mt-1 text-sm leading-6 text-gray-600">Zoek op sport, plaats en activiteiten die bij jouw agenda passen.</p></article><article className="rounded-2xl border border-emerald-100 bg-white p-5"><span className="text-2xl">＋</span><h2 className="mt-3 font-bold text-gray-900">Doe mee</h2><p className="mt-1 text-sm leading-6 text-gray-600">Sluit aan bij een groep of maak zelf een activiteit aan.</p></article><article className="rounded-2xl border border-emerald-100 bg-white p-5"><span className="text-2xl">▤</span><h2 className="mt-3 font-bold text-gray-900">Blijf verbonden</h2><p className="mt-1 text-sm leading-6 text-gray-600">Houd contact met deelnemers via de groepschat van een activiteit.</p></article></div>
-          <section className="landing-how mx-auto max-w-7xl px-5 pb-10 sm:px-8 lg:px-12"><div className="mb-5 max-w-2xl"><p className="text-xs font-bold uppercase tracking-[.18em] text-emerald-700">Zo werkt het</p><h2 className="mt-2 text-2xl font-black tracking-tight text-gray-950 sm:text-3xl">Van eerste klik naar samen sporten.</h2><p className="mt-3 text-sm leading-6 text-gray-600 sm:text-base">SportConnect maakt het makkelijker om mensen te vinden die zin hebben om te bewegen. Je hoeft niet al een team te hebben — je kunt aansluiten of zelf iets organiseren.</p></div><div className="grid gap-4 md:grid-cols-3"><article className="landing-step rounded-2xl border border-emerald-100 bg-white p-5"><span className="landing-step-number">01</span><h3 className="mt-4 font-bold text-gray-900">Kies wat bij je past</h3><p className="mt-2 text-sm leading-6 text-gray-600">Filter op sport en locatie en bekijk wanneer en waar anderen afspreken.</p></article><article className="landing-step rounded-2xl border border-emerald-100 bg-white p-5"><span className="landing-step-number">02</span><h3 className="mt-4 font-bold text-gray-900">Sluit aan of organiseer</h3><p className="mt-2 text-sm leading-6 text-gray-600">Doe mee met een open activiteit of maak zelf een moment aan met een maximumaantal deelnemers.</p></article><article className="landing-step rounded-2xl border border-emerald-100 bg-white p-5"><span className="landing-step-number">03</span><h3 className="mt-4 font-bold text-gray-900">Stem samen af</h3><p className="mt-2 text-sm leading-6 text-gray-600">Gebruik de groepschat om praktische afspraken te maken met de deelnemers.</p></article></div><div className="landing-bottom-cta mt-6 flex flex-col gap-4 rounded-2xl border border-emerald-100 bg-white p-6 sm:flex-row sm:items-center sm:justify-between"><div><h3 className="text-lg font-bold text-gray-900">Zin om in beweging te komen?</h3><p className="mt-1 text-sm leading-6 text-gray-600">Maak een account aan en ontdek welke activiteiten bij jou in de buurt passen.</p></div><button type="button" onClick={() => setAuthMode("register")} className="self-start rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-800 sm:self-auto">Gratis registreren <span className="ml-1">→</span></button></div></section>
-        </section>
+        <LandingPage onRegister={() => setAuthMode("register")} onLogin={() => setAuthMode("login")} />
       ) : selectedActivity ? (
         <ActivityDetails
           activity={selectedActivity}
@@ -599,7 +522,7 @@ export default function Home() {
           hasJoined={joinedActivityIds.includes(selectedActivity.id)}
           onJoin={() => joinActivity(selectedActivity.id)}
           onLeave={() => leaveActivity(selectedActivity.id)}
-          isOrganizer={selectedActivity.organizer === "Jij"}
+          isOrganizer={selectedActivity.organizerId === currentUserId}
           onManageSettings={() => {
             const databaseActivityId = selectedActivity.id - 100000;
             if (databaseActivityId > 0) setSettingsOverlayActivityId(databaseActivityId);
@@ -842,6 +765,12 @@ export default function Home() {
             });
           }}
         />
+      )}
+      {notice && (
+        <div role={notice.tone === "error" ? "alert" : "status"} className={`app-notice fixed left-1/2 top-20 z-[10000] flex w-[min(92vw,480px)] -translate-x-1/2 items-start gap-3 rounded-2xl border bg-white px-4 py-3 text-sm shadow-xl ${notice.tone === "error" ? "border-red-200 text-red-800" : "border-emerald-200 text-emerald-900"}`}>
+          <span className="flex-1">{notice.text}</span>
+          <button type="button" onClick={() => setNotice(null)} aria-label="Melding sluiten" className="rounded-full px-2 hover:bg-gray-100">✕</button>
+        </div>
       )}
       {preferencesOpen && (
         <SportPreferencesModal

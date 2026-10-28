@@ -1,3 +1,8 @@
+export type ActivityMember = {
+  id: number;
+  name: string;
+};
+
 export type Activity = {
   id: number;
   sport: string;
@@ -9,7 +14,9 @@ export type Activity = {
   level: string;
   description: string;
   organizer: string;
+  organizerId?: number;
   memberNames: string[];
+  members?: ActivityMember[];
   x: number;
   y: number;
   latitude?: number | null;

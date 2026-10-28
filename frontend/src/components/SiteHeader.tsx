@@ -18,6 +18,7 @@ export type SiteHeaderProps = {
 };
 
 type Notice = { id: string; title: string; body: string; createdAt?: string; read?: boolean; activityId?: number | null; targetUrl?: string | null; };
+type ChatOverviewRow = { sleutel: string; soort: "groep" | "prive"; titel: string; subtitel: string; geannuleerd: boolean; href: string; laatste_bericht: { afzender_naam: string; inhoud: string; verzonden_op: string } | null };
 type ChatPreview = { key: string; title: string; subtitle: string; preview: string; href: string; timestamp?: string; kind: "group" | "private" };
 
 export default function SiteHeader({ theme, onThemeToggle, userName, showMapToggle = false, mapOnly = false, onMapToggle, onLogin, onRegister, onLogout, onHome }: SiteHeaderProps) {
@@ -31,6 +32,18 @@ export default function SiteHeader({ theme, onThemeToggle, userName, showMapTogg
   const [notifications, setNotifications] = useState<Notice[]>([]);
   const notificationRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    function closeOutside(event: MouseEvent) {
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setNotificationsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", closeOutside);
+    return () => document.removeEventListener("mousedown", closeOutside);
+  }, []);
+
+  // Poll notifications only while logged in, and only when the tab is visible.
+  useEffect(() => {
+    if (!userName) return;
     let cancelled = false;
 
     async function loadNotifications() {
@@ -46,28 +59,21 @@ export default function SiteHeader({ theme, onThemeToggle, userName, showMapTogg
 
     void loadNotifications();
 
-  const refreshInterval = window.setInterval(() => {
-    if (!document.hidden) void loadNotifications();
-  }, 15000);
+    const refreshInterval = window.setInterval(() => {
+      if (!document.hidden) void loadNotifications();
+    }, 15000);
 
-  function refreshWhenVisible() {
-    if (!document.hidden) void loadNotifications();
-  }
-
-  document.addEventListener("visibilitychange", refreshWhenVisible);
-
-    function closeOutside(event: MouseEvent) {
-      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
-        setNotificationsOpen(false);
-      }
+    function refreshWhenVisible() {
+      if (!document.hidden) void loadNotifications();
     }
 
-    document.addEventListener("mousedown", closeOutside);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
       cancelled = true;
-      document.removeEventListener("mousedown", closeOutside);
+      window.clearInterval(refreshInterval);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, []);
+  }, [userName]);
 
   useEffect(() => {
     if (!userName || !chatHubOpen) return;
@@ -75,39 +81,21 @@ export default function SiteHeader({ theme, onThemeToggle, userName, showMapTogg
     async function loadChatPreviews() {
       setChatHubLoading(true); setChatHubError("");
       try {
-        const [activityResponse, friendResponse] = await Promise.all([
-          fetch("/api/activities", { cache: "no-store" }),
-          fetch("/api/friends", { cache: "no-store" }),
-        ]);
-        const activityRows = activityResponse.ok ? await activityResponse.json() : [];
-        const friendData = friendResponse.ok ? await friendResponse.json() : { friends: [] };
-        const activities = Array.isArray(activityRows) ? activityRows : [];
-        const friends = Array.isArray(friendData?.friends) ? friendData.friends : [];
-        const jobs: Promise<ChatPreview | null>[] = [];
-        for (const activity of activities) {
-          const id = Number(activity.activiteit_id);
-          if (!Number.isFinite(id) || !id) continue;
-          const title = String(activity.titel || "Groepschat");
-          const subtitle = [activity.sport, activity.woonplaats].filter(Boolean).join(" · ") || "Groepschat";
-          jobs.push(fetch(`/api/activities/${id}/chat/messages?limit=1`, { cache: "no-store" }).then(async r => {
-            if (!r.ok) return null;
-            const data = await r.json(); const rows = Array.isArray(data.messages) ? data.messages : [];
-            const latest = rows[rows.length - 1];
-            return { key: `group-${id}`, title, subtitle, preview: latest ? `${latest.naam || latest.afzender_naam || "Deelnemer"}: ${latest.inhoud || latest.bericht || "Bericht"}` : "Nog geen berichten — start het gesprek", href: `/activities/${id}/chat`, timestamp: latest?.verzonden_op, kind: "group" as const };
-          }).catch(() => null));
-        }
-        for (const friend of friends) {
-          const id = Number(friend.gebruiker_id);
-          if (!Number.isFinite(id) || !id) continue;
-          jobs.push(fetch(`/api/messages/${id}?after_id=0`, { cache: "no-store" }).then(async r => {
-            if (!r.ok) return null;
-            const data = await r.json(); const rows = Array.isArray(data.messages) ? data.messages : [];
-            const latest = rows[rows.length - 1];
-            return { key: `private-${id}`, title: String(friend.naam || "Vriend"), subtitle: "Privébericht", preview: latest ? `${latest.afzender_naam || latest.naam || "Bericht"}: ${latest.inhoud || latest.bericht || "Bericht"}` : "Begin een privégesprek", href: `/messages/${id}`, timestamp: latest?.verzonden_op, kind: "private" as const };
-          }).catch(() => null));
-        }
-        const results = (await Promise.all(jobs)).filter((x): x is ChatPreview => x !== null);
-        results.sort((a,b) => (b.timestamp ? Date.parse(b.timestamp) : 0) - (a.timestamp ? Date.parse(a.timestamp) : 0));
+        // One request for all group chats and friends, each with its latest message.
+        const response = await fetch("/api/chats", { cache: "no-store" });
+        if (!response.ok) throw new Error();
+        const data: { chats?: ChatOverviewRow[] } = await response.json();
+        const results: ChatPreview[] = (data.chats ?? []).map((chat) => ({
+          key: chat.sleutel,
+          title: chat.titel,
+          subtitle: chat.geannuleerd ? `${chat.subtitel} · Geannuleerd` : chat.subtitel,
+          preview: chat.laatste_bericht
+            ? `${chat.laatste_bericht.afzender_naam}: ${chat.laatste_bericht.inhoud}`
+            : chat.soort === "groep" ? "Nog geen berichten — start het gesprek" : "Begin een privégesprek",
+          href: chat.href,
+          timestamp: chat.laatste_bericht?.verzonden_op,
+          kind: chat.soort === "groep" ? "group" : "private",
+        }));
         if (!cancelled) setChatPreviews(results);
       } catch { if (!cancelled) setChatHubError("Chats konden niet worden geladen. Probeer het opnieuw."); }
       finally { if (!cancelled) setChatHubLoading(false); }

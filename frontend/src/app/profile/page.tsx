@@ -3,14 +3,16 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
-import GlobalChatLauncher from "@/components/GlobalChatLauncher";
 import SportPreferencesModal from "@/components/SportPreferencesModal";
 import { sports } from "@/data/activities";
 
 type ProfileSettings = {
   displayName: string;
   city: string;
-  age: string;
+  age: number | null;
+  // Only filled in when the user enters a (new) birth date; the API never returns it.
+  birthDate: string;
+  hasBirthDate: boolean;
   bio: string;
   photo: string;
   publicProfile: boolean;
@@ -21,7 +23,7 @@ type ProfileSettings = {
 };
 
 type ServerProfile = {
-  gebruiker_id: number; naam: string; email: string; leeftijd: number; woonplaats: string;
+  gebruiker_id: number; naam: string; email: string; leeftijd: number; heeft_geboortedatum: boolean; woonplaats: string;
   bio: string | null; profielfoto: string | null;
   profiel_openbaar: boolean; priveberichten_toestaan: boolean; favoriete_sporten_tonen: boolean;
   sporten: { favoriet: string[]; verborgen: string[] };
@@ -30,7 +32,7 @@ type ServerProfile = {
 
 function fromServer(data: ServerProfile): ProfileSettings {
   return {
-    displayName: data.naam, city: data.woonplaats, age: String(data.leeftijd),
+    displayName: data.naam, city: data.woonplaats, age: data.leeftijd, birthDate: "", hasBirthDate: data.heeft_geboortedatum,
     bio: data.bio ?? "", photo: data.profielfoto ?? "",
     publicProfile: data.profiel_openbaar, allowMessages: data.priveberichten_toestaan,
     showFavoriteSports: data.favoriete_sporten_tonen,
@@ -40,7 +42,7 @@ function fromServer(data: ServerProfile): ProfileSettings {
 
 const PHOTO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 const defaults: ProfileSettings = {
-  displayName: "", city: "", age: "", bio: "", photo: "",
+  displayName: "", city: "", age: null, birthDate: "", hasBirthDate: false, bio: "", photo: "",
   publicProfile: true, allowMessages: true, showFavoriteSports: true,
   favoriteSports: [], hiddenSports: [],
 };
@@ -52,6 +54,7 @@ const NOTIFICATION_OPTIONS = [
   { key: "group_chat", label: "Groepschatberichten" },
   { key: "private_messages", label: "Privéberichten" },
   { key: "friend_requests", label: "Vriendschapsverzoeken" },
+  { key: "profile_views", label: "Iemand bekijkt je profiel" },
   { key: "reminders", label: "Herinneringen voor activiteiten" },
 ] as const;
 
@@ -178,7 +181,7 @@ export default function ProfilePage() {
         body: JSON.stringify({
           naam: profile.displayName,
           woonplaats: profile.city,
-          leeftijd: Number(profile.age),
+          ...(profile.birthDate ? { geboortedatum: profile.birthDate } : {}),
           bio: profile.bio.trim() || null,
           profielfoto: profile.photo || null,
           profiel_openbaar: profile.publicProfile,
@@ -228,11 +231,11 @@ export default function ProfilePage() {
             {profile.photo ? <img src={profile.photo} alt="Profielfoto" className="h-full w-full object-cover" /> : (profile.displayName.trim()[0] || "S")}
             <span className="absolute inset-x-0 bottom-0 bg-black/65 py-1 text-xs font-semibold text-white">Wijzigen</span>
           </button>
-          <input ref={fileRef} type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
+          <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handlePhoto} className="hidden" />
           <h1 className="text-xl font-bold">{profile.displayName || "Jouw profiel"}</h1>
           <p className="mt-1 text-sm theme-muted">{profile.city || "Voeg je woonplaats toe"}</p>
           <span className="mt-4 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-900">{profile.publicProfile ? "Openbaar profiel" : "Privéprofiel"}</span>
-          <p className="mt-4 text-xs theme-muted">Account #{userId ?? "—"}</p>
+          {userId !== null && <a href={`/users/${userId}`} className="mt-4 text-sm font-semibold text-emerald-600 hover:underline">Bekijk hoe anderen je zien →</a>}
         </div>
         <div className="mt-6 border-t pt-4 text-sm"><p className="font-semibold">Account</p><p className="mt-1 break-all theme-muted">{email}</p></div>
       </aside>
@@ -243,7 +246,7 @@ export default function ProfilePage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="text-sm font-semibold">Weergavenaam<input className="theme-field mt-2 w-full rounded-xl border px-3 py-3 font-normal" value={profile.displayName} onChange={(e) => update("displayName", e.target.value)} maxLength={100} required /></label>
             <label className="text-sm font-semibold">Woonplaats<input className="theme-field mt-2 w-full rounded-xl border px-3 py-3 font-normal" value={profile.city} onChange={(e) => update("city", e.target.value)} minLength={2} maxLength={100} required /></label>
-            <label className="text-sm font-semibold">Leeftijd<input className="theme-field mt-2 w-full rounded-xl border px-3 py-3 font-normal" type="number" min="13" max="120" value={profile.age} onChange={(e) => update("age", e.target.value)} required /></label>
+            <label className="text-sm font-semibold">Geboortedatum<input className="theme-field mt-2 w-full rounded-xl border px-3 py-3 font-normal" type="date" value={profile.birthDate} onChange={(e) => update("birthDate", e.target.value)} required={!profile.hasBirthDate} /><span className="mt-1 block text-xs font-normal theme-muted">{profile.age !== null ? `Anderen zien alleen je leeftijd (nu ${profile.age}). ` : ""}{profile.hasBirthDate ? "Laat leeg om niets te wijzigen." : "Vul je geboortedatum in; je leeftijd wordt dan automatisch bijgewerkt."}</span></label>
             <label className="text-sm font-semibold sm:col-span-2">Over mij<textarea className="theme-field mt-2 min-h-28 w-full rounded-xl border px-3 py-3 font-normal" value={profile.bio} onChange={(e) => update("bio", e.target.value)} maxLength={500} placeholder="Vertel kort wat je leuk vindt aan sporten…" /></label>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3"><button type="button" onClick={() => fileRef.current?.click()} className="rounded-xl border px-4 py-2.5 text-sm font-semibold transition hover:border-emerald-600">Profielfoto kiezen</button>{profile.photo && <button type="button" onClick={() => update("photo", "")} className="rounded-xl border px-4 py-2.5 text-sm font-semibold">Foto verwijderen</button>}<span className="text-xs theme-muted">JPG, PNG of andere afbeelding · maximaal 1,5 MB</span></div>
@@ -269,8 +272,6 @@ export default function ProfilePage() {
         </div>
       </form>
     </div>
-    <GlobalChatLauncher />
-    <GlobalChatLauncher />
     {preferencesOpen && <SportPreferencesModal onClose={() => setPreferencesOpen(false)} onSaved={(favorite, hidden) => {
       update("favoriteSports", favorite);
       update("hiddenSports", hidden);

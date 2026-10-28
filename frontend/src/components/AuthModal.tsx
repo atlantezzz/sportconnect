@@ -21,7 +21,7 @@ export default function AuthModal({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [age, setAge] = useState("18");
+  const [birthDate, setBirthDate] = useState("");
   const [city, setCity] = useState("Eindhoven");
   const [country, setCountry] = useState("Nederland");
   const [error, setError] = useState("");
@@ -58,7 +58,7 @@ export default function AuthModal({
                   naam: name.trim(),
                   email: email.trim(),
                   wachtwoord: password,
-                  leeftijd: Number(age),
+                  geboortedatum: birthDate,
                   woonplaats: city.trim(),
                   land: country.trim(),
                 }
@@ -74,7 +74,7 @@ export default function AuthModal({
 
       if (!response.ok) {
         throw new Error(
-          result.detail ?? "Inloggen of registreren is mislukt.",
+          typeof result.detail === "string" ? result.detail : "Controleer je gegevens en probeer het opnieuw.",
         );
       }
 
@@ -149,19 +149,19 @@ export default function AuthModal({
               </div>
 
               <div>
-                <label htmlFor="auth-age" className="mb-1 block text-sm font-medium text-gray-700">
-                  Leeftijd
+                <label htmlFor="auth-birth-date" className="mb-1 block text-sm font-medium text-gray-700">
+                  Geboortedatum
                 </label>
                 <input
-                  id="auth-age"
-                  type="number"
-                  min={13}
-                  max={120}
-                  value={age}
-                  onChange={(event) => setAge(event.target.value)}
+                  id="auth-birth-date"
+                  type="date"
+                 
+                  value={birthDate}
+                  onChange={(event) => setBirthDate(event.target.value)}
                   required
                   className="w-full rounded-lg border border-gray-200 px-3 py-3 text-sm"
                 />
+                <p className="mt-1 text-xs text-gray-500">Je moet minimaal 13 jaar zijn. Anderen zien alleen je leeftijd.</p>
               </div>
 
               <div>

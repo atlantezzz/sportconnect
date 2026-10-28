@@ -54,7 +54,7 @@ function ActivityChatContent() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [chatMenuOpen, setChatMenuOpen] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const lastMessageId = useRef(0);
@@ -94,6 +94,7 @@ function ActivityChatContent() {
 
       setActivity(chatData.activiteit as Activity);
       setUserId(meData?.user?.gebruiker_id ?? null);
+      setUserName(meData?.user?.naam ?? null);
       const initialMessages = (messagesData.messages ?? []) as ChatMessage[];
       setMessages(initialMessages);
       lastMessageId.current = initialMessages.reduce((max, message) => Math.max(max, message.bericht_id), 0);
@@ -185,7 +186,7 @@ function ActivityChatContent() {
       <SiteHeader
         theme={theme}
         onThemeToggle={() => setTheme((value) => value === "light" ? "dark" : "light")}
-        userName="Ingelogd"
+        userName={userName}
         onHome={() => { window.location.href = "/"; }}
       />
       <div className="chat-page-body" style={{ padding: "24px 16px", flex: 1, minHeight: 0 }}>
@@ -283,19 +284,6 @@ function ActivityChatContent() {
       </section>
       </div>
       </div>
-      {chatMenuOpen && <div className="chat-route-launcher-panel theme-surface" role="dialog" aria-label="Groepschats"><div className="flex items-center justify-between border-b p-3"><strong className="text-sm">Groepschats</strong><button type="button" onClick={() => setChatMenuOpen(false)} aria-label="Sluiten">×</button></div><a className="block border-b p-3 text-sm" href={`/activities/${activityId}/chat`}><strong>{activity?.titel ?? "Huidige groepschat"}</strong><span className="mt-1 block text-xs theme-muted">Je bent deze chat aan het bekijken</span></a><button type="button" className="w-full p-3 text-left text-sm font-semibold text-emerald-600" onClick={() => { window.location.href = "/"; }}>Activiteiten en andere groepschats bekijken →</button></div>}
-      <button
-        type="button"
-        onClick={() => setChatMenuOpen((open) => !open)}
-        aria-expanded={chatMenuOpen}
-        aria-label="Groepschats openen"
-        title="Groepschats openen"
-        className="chat-launcher-button" style={{ position: "fixed", right: 20, bottom: 20, zIndex: 120, width: 58, height: 58, borderRadius: 999, border: "2px solid #047857", background: "#047857", color: "#fff", boxShadow: "0 8px 28px rgba(0,0,0,.28)", display: "grid", placeItems: "center", cursor: "pointer", transition: "transform 180ms ease, box-shadow 180ms ease" }}
-        onMouseEnter={(event) => { event.currentTarget.style.transform = "translateY(-3px) scale(1.03)"; }}
-        onMouseLeave={(event) => { event.currentTarget.style.transform = "translateY(0) scale(1)"; }}
-      >
-        <svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-5.5A7.5 7.5 0 1 1 20 11.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01" strokeWidth="2.5" strokeLinecap="round"/></svg>
-      </button>
     </main>
   );
 }

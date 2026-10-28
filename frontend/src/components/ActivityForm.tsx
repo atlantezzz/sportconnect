@@ -17,7 +17,8 @@ export type NewActivityInput = {
 type ActivityFormProps = {
   sports: string[];
   onClose: () => void;
-  onSubmit: (activity: NewActivityInput) => void;
+  // Rejects with a Dutch message when saving fails.
+  onSubmit: (activity: NewActivityInput) => Promise<void>;
 };
 
 const inputClassName =
@@ -48,11 +49,13 @@ export default function ActivityForm({
   const [level, setLevel] = useState("Alle niveaus");
   const [capacity, setCapacity] = useState("8");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const today = localDateString(new Date());
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitting) return;
     setError("");
 
     if (!title.trim() || !date || !startTime || !selectedLocation) {
@@ -82,16 +85,23 @@ export default function ActivityForm({
       return;
     }
 
-    onSubmit({
-      sport,
-      title: title.trim(),
-      date,
-      startTime,
-      location: selectedLocation,
-      description: description.trim(),
-      level,
-      capacity: parsedCapacity,
-    });
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        sport,
+        title: title.trim(),
+        date,
+        startTime,
+        location: selectedLocation,
+        description: description.trim(),
+        level,
+        capacity: parsedCapacity,
+      });
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "Activiteit opslaan is mislukt.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -209,8 +219,8 @@ export default function ActivityForm({
             <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50">
               Annuleren
             </button>
-            <button type="submit" className="rounded-lg bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
-              Activiteit publiceren
+            <button type="submit" disabled={submitting} className="rounded-lg bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
+              {submitting ? "Publiceren…" : "Activiteit publiceren"}
             </button>
           </div>
         </form>

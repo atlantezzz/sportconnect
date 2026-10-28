@@ -8,7 +8,11 @@ export async function POST(request: Request) {
 
     const response = await fetch(`${apiUrl}/auth/login`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        // For rate limiting per client in the backend.
+        "x-forwarded-for": request.headers.get("x-forwarded-for") ?? "",
+      },
       body: JSON.stringify(body),
       cache: "no-store",
     });
