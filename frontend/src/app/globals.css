@@ -664,6 +664,8 @@ button:not(:disabled):active { transform:translateY(1px) scale(.98); }
 .activity-map[data-map-theme="dark"] .sport-pin.is-full { border-color: #6b7280; }
 .activity-map[data-map-theme="dark"] .sport-pin.is-selected { border-color: #fb923c; }
 .activity-map[data-map-theme="dark"] .leaflet-container { background: #0e1110; }
+/* Dark map from the light OSM tiles: invert, rotate hues back (water blue, parks green), soften. */
+.activity-map[data-map-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.88) saturate(.55); }
 .activity-map[data-map-theme="dark"] .leaflet-bar a { background: #121a15; color: #f3f7f4; border-color: #2b302d; }
 .activity-map[data-map-theme="dark"] .leaflet-bar a:hover { background: #1b2620; }
 .activity-map[data-map-theme="dark"] .leaflet-control-attribution { background: rgba(12, 17, 14, .8); color: #a9b6ad; }

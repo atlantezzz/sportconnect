@@ -15,13 +15,12 @@ type Props = {
 
 const DEFAULT_CENTER: [number, number] = [51.4416, 5.4697];
 
-// CARTO basemaps (OpenStreetMap data): Voyager for light, Dark Matter for dark.
-const TILES = {
-  light: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-} as const;
+// OpenStreetMap tiles (no API key). Dark mode darkens the same tiles with a CSS
+// filter on the tile layer only (see .activity-map[data-map-theme="dark"] in
+// globals.css), so pins keep their colours. CARTO's styles need an API key.
+const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-bijdragers &copy; <a href="https://carto.com/attributions">CARTO</a>';
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-bijdragers';
 
 // Follows data-theme on <html>, which the theme toggle changes.
 function subscribeToTheme(onChange: () => void) {
@@ -102,8 +101,7 @@ export default function LeafletActivityMap({
         scrollWheelZoom
         style={{ height: "100%", width: "100%" }}
       >
-        {/* key: remount the layer when the theme changes */}
-        <TileLayer key={theme} attribution={ATTRIBUTION} url={TILES[theme]} subdomains="abcd" maxZoom={20} />
+        <TileLayer attribution={ATTRIBUTION} url={TILE_URL} maxZoom={19} />
 
         <FitActivities activities={locatedActivities} />
 
