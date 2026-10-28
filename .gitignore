@@ -1,0 +1,22 @@
+# Secrets
+.env
+.env.*
+
+# Dependencies and build output
+node_modules/
+frontend/.next/
+frontend/out/
+*.tsbuildinfo
+frontend/next-env.d.ts
+__pycache__/
+*.pyc
+
+# Database dumps (db-migration skill)
+backups/
+
+# Local Claude Code settings
+.claude/settings.local.json
+
+# OS / editor
+.DS_Store
+*.swp

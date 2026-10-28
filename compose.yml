@@ -1,0 +1,56 @@
+
+services:
+  db:
+    image: postgres:17
+    container_name: sportconnect-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sportconnect
+      POSTGRES_USER: sportconnect
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Stel POSTGRES_PASSWORD in via .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sportconnect -d sportconnect"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  api:
+    build:
+      context: ./backend
+    container_name: sportconnect-api
+    restart: unless-stopped
+    environment:
+      SESSION_SECRET: ${SESSION_SECRET:?Stel SESSION_SECRET in via .env}
+      COOKIE_SECURE: "true"
+      API_INTERNAL_URL: http://api:8000
+      DATABASE_URL: postgresql://sportconnect:${POSTGRES_PASSWORD}@db:5432/sportconnect
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      - backend
+  frontend:
+    environment:
+      GEOAPIFY_API_KEY: ${GEOAPIFY_API_KEY:?Stel GEOAPIFY_API_KEY in via .env}
+    build:
+      context: ./frontend
+    container_name: sportconnect-frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - backend
+
+volumes:
+  postgres_data:
+
+networks:
+  backend:
+    name: sportconnect_backend

@@ -1,0 +1,441 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --background: #f7f9f6;
+  --foreground: #17231b;
+  --surface: #ffffff;
+  --surface-muted: #f5f8f4;
+  --border: #e1e8e1;
+  --muted: #647168;
+  --header: #1d2d23;
+  --header-border: #2d3d32;
+  --map-ground: #edf1e9;
+  --map-road: #dce4d6;
+  --map-road-edge: #d7dfd1;
+  --map-road-center: #ffffff;
+  --map-green: #d5e5c8;
+  --field: #ffffff;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #000000;
+  --foreground: #f8faf9;
+  --surface: #080a09;
+  --surface-muted: #101311;
+  --border: #2b302d;
+  --muted: #b7c0ba;
+  --header: #1d2d23;
+  --header-border: #2d3d32;
+  --map-ground: #111713;
+  --map-road: #202a23;
+  --map-road-edge: #19211b;
+  --map-road-center: #303a32;
+  --map-green: #243b2a;
+  --field: #101311;
+}
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+html, body { min-height: 100%; }
+body { background: var(--background); color: var(--foreground); font-family: Arial, Helvetica, sans-serif; }
+
+/* One consistent dark-green site header across the main app and chat route. */
+.site-header, .chat-global-header {
+  background: var(--header) !important;
+  color: #fff !important;
+  border-color: var(--header-border) !important;
+}
+.site-header .site-brand-text { color: #fff !important; }
+.site-header button, .chat-global-header button { color: #fff; border-color: #3b4b40; }
+.site-header .theme-toggle:hover, .site-header .map-mode-toggle:hover, .chat-global-header button:hover { background-color: #2a3d30; }
+
+/* Dark surfaces are black/near-black; the header remains green and action buttons remain green. */
+:root[data-theme="dark"] body,
+:root[data-theme="dark"] .sportconnect-app,
+:root[data-theme="dark"] .landing-page,
+:root[data-theme="dark"] .chat-page,
+:root[data-theme="dark"] .activity-details-page,
+:root[data-theme="dark"] .settings-page { background: #000 !important; color: #f8faf9 !important; }
+:root[data-theme="dark"] .sportconnect-app aside,
+:root[data-theme="dark"] .sportconnect-app .activity-card,
+:root[data-theme="dark"] .activity-preview,
+:root[data-theme="dark"] .chat-launcher-panel,
+:root[data-theme="dark"] .chat-page-shell,
+:root[data-theme="dark"] .chat-page-messages,
+:root[data-theme="dark"] .chat-page-composer,
+:root[data-theme="dark"] .activity-details-page > div > div,
+:root[data-theme="dark"] .settings-page section,
+:root[data-theme="dark"] .settings-page .bg-white,
+:root[data-theme="dark"] .landing-step,
+:root[data-theme="dark"] .landing-bottom-cta,
+:root[data-theme="dark"] .landing-page article { background: #080a09 !important; color: #f8faf9 !important; border-color: #2b302d !important; }
+:root[data-theme="dark"] .sportconnect-app .bg-white,
+:root[data-theme="dark"] .sportconnect-app .bg-gray-50,
+:root[data-theme="dark"] .sportconnect-app .bg-gray-100,
+:root[data-theme="dark"] .activity-details-page .bg-white,
+:root[data-theme="dark"] .activity-details-page .bg-gray-50,
+:root[data-theme="dark"] .activity-details-page .bg-gray-100,
+:root[data-theme="dark"] .settings-page .bg-gray-50,
+:root[data-theme="dark"] .settings-page .bg-gray-100,
+:root[data-theme="dark"] .settings-page .bg-white,
+:root[data-theme="dark"] .landing-page .bg-white,
+:root[data-theme="dark"] .landing-page .bg-gray-50,
+:root[data-theme="dark"] .landing-page .bg-gray-100 { background-color: #080a09 !important; }
+:root[data-theme="dark"] .sportconnect-app .text-gray-950,
+:root[data-theme="dark"] .sportconnect-app .text-gray-900,
+:root[data-theme="dark"] .sportconnect-app .text-gray-800,
+:root[data-theme="dark"] .sportconnect-app .text-gray-700,
+:root[data-theme="dark"] .activity-details-page .text-gray-950,
+:root[data-theme="dark"] .activity-details-page .text-gray-900,
+:root[data-theme="dark"] .activity-details-page .text-gray-800,
+:root[data-theme="dark"] .activity-details-page .text-gray-700,
+:root[data-theme="dark"] .settings-page .text-gray-950,
+:root[data-theme="dark"] .settings-page .text-gray-900,
+:root[data-theme="dark"] .settings-page .text-gray-800,
+:root[data-theme="dark"] .settings-page .text-gray-700,
+:root[data-theme="dark"] .landing-page .text-gray-950,
+:root[data-theme="dark"] .landing-page .text-gray-900,
+:root[data-theme="dark"] .landing-page .text-gray-800,
+:root[data-theme="dark"] .landing-page .text-gray-700 { color: #f8faf9 !important; }
+:root[data-theme="dark"] .sportconnect-app .text-gray-600,
+:root[data-theme="dark"] .sportconnect-app .text-gray-500,
+:root[data-theme="dark"] .sportconnect-app .text-gray-400,
+:root[data-theme="dark"] .activity-details-page .text-gray-600,
+:root[data-theme="dark"] .activity-details-page .text-gray-500,
+:root[data-theme="dark"] .settings-page .text-gray-600,
+:root[data-theme="dark"] .settings-page .text-gray-500,
+:root[data-theme="dark"] .landing-page .text-gray-600,
+:root[data-theme="dark"] .landing-page .text-gray-500 { color: #b7c0ba !important; }
+/* Green accent copy on dark backgrounds uses a bright mint, never low-contrast forest green. */
+:root[data-theme="dark"] .landing-page .text-emerald-700,
+:root[data-theme="dark"] .landing-page .text-emerald-800,
+:root[data-theme="dark"] .activity-details-page .text-emerald-700,
+:root[data-theme="dark"] .settings-page .text-emerald-700 { color: #34d399 !important; }
+:root[data-theme="dark"] .sportconnect-app input,
+:root[data-theme="dark"] .sportconnect-app textarea,
+:root[data-theme="dark"] .sportconnect-app select,
+:root[data-theme="dark"] .activity-details-page input,
+:root[data-theme="dark"] .activity-details-page textarea,
+:root[data-theme="dark"] .activity-details-page select,
+:root[data-theme="dark"] .settings-page input,
+:root[data-theme="dark"] .settings-page textarea,
+:root[data-theme="dark"] .settings-page select,
+:root[data-theme="dark"] .chat-page input,
+:root[data-theme="dark"] .chat-page textarea,
+:root[data-theme="dark"] .chat-page select { background: #101311 !important; color: #f8faf9 !important; border-color: #3b433d !important; }
+:root[data-theme="dark"] input:-webkit-autofill,
+:root[data-theme="dark"] input:-webkit-autofill:hover,
+:root[data-theme="dark"] input:-webkit-autofill:focus { -webkit-text-fill-color: #f8faf9 !important; box-shadow: 0 0 0 1000px #101311 inset !important; caret-color: #f8faf9; }
+:root[data-theme="dark"] .sportconnect-app .border-gray-100,
+:root[data-theme="dark"] .sportconnect-app .border-gray-200,
+:root[data-theme="dark"] .sportconnect-app .border-gray-300,
+:root[data-theme="dark"] .activity-details-page .border-gray-100,
+:root[data-theme="dark"] .activity-details-page .border-gray-200,
+:root[data-theme="dark"] .settings-page .border-gray-100,
+:root[data-theme="dark"] .settings-page .border-gray-200 { border-color: #2b302d !important; }
+
+/* Keep sport labels and map icons in their own sport palette. Do not apply filters to SVGs. */
+.map-pin { border-color: #ffffff; background: #ffffff; color: #047857; box-shadow: 0 2px 8px rgb(0 0 0 / 18%); }
+.map-pin-selected { border-color: #d1fae5; background: #047857; color: #ffffff; box-shadow: 0 0 0 3px rgb(16 185 129 / 22%), 0 3px 10px rgb(0 0 0 / 22%); }
+:root[data-theme="dark"] .map-pin { border-color: #303a32 !important; background: #080a09 !important; color: #34d399 !important; }
+:root[data-theme="dark"] .map-pin-selected { border-color: #047857 !important; background: #047857 !important; color: #fff !important; box-shadow: 0 0 0 3px rgb(52 211 153 / 16%), 0 3px 10px rgb(0 0 0 / 45%); }
+.map-surface { background: var(--map-ground) !important; }
+.map-background { display:block; }
+:root[data-theme="dark"] .map-surface .bg-white { background:#080a09 !important; color:#f8faf9 !important; border-color:#303a32 !important; }
+:root[data-theme="dark"] .map-surface .text-gray-500,
+:root[data-theme="dark"] .map-surface .text-gray-600 { color:#c2cbc4 !important; }
+
+/* Theme-safe activity details and settings overlays, including the settings iframe. */
+:root[data-theme="dark"] .activity-details-page .bg-emerald-50,
+:root[data-theme="dark"] .activity-details-page .bg-emerald-100,
+:root[data-theme="dark"] .settings-page .bg-emerald-50,
+:root[data-theme="dark"] .settings-page .bg-emerald-100 { background:#102018 !important; }
+:root[data-theme="dark"] .activity-details-page .text-emerald-700,
+:root[data-theme="dark"] .settings-page .text-emerald-700 { color:#34d399 !important; }
+:root[data-theme="dark"] .settings-page .text-red-700 { color:#fca5a5 !important; }
+:root[data-theme="dark"] .settings-page .bg-red-50 { background:#2a1010 !important; }
+:root[data-theme="dark"] .settings-page .bg-amber-50 { background:#29200b !important; }
+:root[data-theme="dark"] .settings-page .text-amber-800 { color:#fcd34d !important; }
+:root[data-theme="dark"] .settings-page .text-red-800 { color:#fca5a5 !important; }
+
+/* Chat page matches the shared site header and uses the same theme tokens. */
+.chat-page-body { flex:1; }
+.chat-page-shell { transition: background-color 180ms ease, border-color 180ms ease; }
+:root[data-theme="dark"] .chat-page-shell { background:#080a09 !important; border-color:#2b302d !important; color:#f8faf9 !important; }
+:root[data-theme="dark"] .chat-page-shell > header { background:#080a09 !important; color:#f8faf9 !important; }
+:root[data-theme="dark"] .chat-page-messages { background:#000 !important; }
+:root[data-theme="dark"] .chat-page-composer { background:#080a09 !important; }
+:root[data-theme="dark"] .chat-page-shell h1,
+:root[data-theme="dark"] .chat-page-shell strong { color:#f8faf9; }
+:root[data-theme="dark"] .chat-page-shell p,
+:root[data-theme="dark"] .chat-page-shell time { color:#b7c0ba; }
+:root[data-theme="dark"] .chat-page-shell .chat-page-composer button { background:#047857 !important; color:#fff !important; }
+.chat-launcher-root { position:fixed !important; right:max(1rem, env(safe-area-inset-right)) !important; bottom:max(1rem, env(safe-area-inset-bottom)) !important; z-index:120 !important; }
+.chat-launcher-button { background:#047857 !important; color:#fff !important; border:2px solid #047857 !important; }
+
+/* Landing preview is a miniature interface, so keep text/background pairs coherent. */
+:root[data-theme="dark"] .landing-showcase-shell { background:#080a09 !important; border-color:#3a443c !important; }
+:root[data-theme="dark"] .landing-showcase-topbar { background:#17221a !important; }
+:root[data-theme="dark"] .landing-showcase-topbar .text-gray-900 { color:#f8faf9 !important; }
+:root[data-theme="dark"] .landing-preview-card { background:#080a09 !important; border-color:#2b302d !important; }
+:root[data-theme="dark"] .landing-mini-map { background:#111713 !important; }
+:root[data-theme="dark"] .landing-map-label { background:#080a09 !important; color:#f8faf9 !important; border:1px solid #303a32; }
+:root[data-theme="dark"] .landing-map-pin { border-color:#303a32 !important; }
+:root[data-theme="dark"] .landing-map-tooltip { background:#080a09 !important; border:1px solid #303a32; }
+:root[data-theme="dark"] .landing-showcase-caption { background:#080a09 !important; border-color:#3a443c !important; }
+:root[data-theme="dark"] .landing-showcase-caption .text-gray-500 { color:#b7c0ba !important; }
+:root[data-theme="dark"] .landing-showcase-caption .text-gray-900 { color:#f8faf9 !important; }
+
+/* Tidy the full-width activity toolbar when the map is hidden. */
+.activity-list-only > .activity-filter-toolbar { width:100%; max-width:1180px; margin-inline:auto; border-bottom-color:var(--border); }
+.activity-list-only > .activity-filter-toolbar input { min-height:42px; }
+.activity-list-only > .activity-filter-toolbar .grid-cols-3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.activity-list-only > .activity-filter-toolbar .grid-cols-3 button { min-height:38px; }
+.landing-step-number { display:inline-grid; width:34px; height:34px; place-items:center; border-radius:10px; background:#e8f7ee; color:#047857; font-size:12px; font-weight:800; }
+:root[data-theme="dark"] .landing-step-number { background:#102018; color:#34d399; }
+
+button, a, .activity-card, .activity-preview, .chat-launcher-panel { transition-property: color, background-color, border-color, box-shadow, transform, opacity; transition-duration:180ms; transition-timing-function:cubic-bezier(.2,.75,.25,1); }
+button:not(:disabled):hover { transform:translateY(-1px); }
+button:not(:disabled):active { transform:translateY(1px) scale(.98); }
+.activity-card:hover { transform:translateY(-2px); }
+:where(button,a,input,select,textarea):focus-visible { outline:3px solid #34d399; outline-offset:3px; }
+@keyframes sportconnect-enter { from { opacity:0; transform:translateY(8px) scale(.99); } to { opacity:1; transform:translateY(0) scale(1); } }
+.activity-preview, .chat-launcher-panel { animation:sportconnect-enter 220ms cubic-bezier(.2,.75,.25,1) both; }
+@media (max-width:639px) { .landing-hero { padding-top:2.5rem; padding-bottom:3.5rem; } .landing-showcase { margin-bottom:1.25rem; } .site-header { height:64px !important; padding-inline:12px; } .chat-page-body { padding:16px 10px !important; } .chat-page-shell { height:calc(100vh - 96px) !important; min-height:440px !important; } }
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; transition-duration:.01ms !important; } }
+
+
+/* Profile and onboarding preference components use the same theme tokens as the app. */
+.theme-surface { background:var(--surface); color:var(--foreground); border-color:var(--border); }
+.theme-muted-surface { background:var(--surface-muted); border-color:var(--border); }
+.theme-field { background:var(--field); color:var(--foreground); border-color:var(--border); }
+.theme-field::placeholder { color:var(--muted); }
+.theme-muted { color:var(--muted); }
+.theme-icon-button { color:var(--foreground); }
+.sport-choice { background:var(--surface); color:var(--foreground); border-color:var(--border); }
+.sport-choice-active { border-color:#059669; background:color-mix(in srgb, #059669 12%, var(--surface)); box-shadow:inset 0 0 0 1px #059669; }
+.theme-surface input, .theme-surface textarea, .theme-surface select { color:var(--foreground); }
+.theme-surface input[type="checkbox"] { accent-color:#059669; }
+.profile-page-header { background:var(--header); color:#fff; border-color:var(--header-border); }
+.activity-filter-toolbar { background:var(--surface); color:var(--foreground); border-color:var(--border); }
+.activity-filter-toolbar input { background:var(--field); color:var(--foreground); border-color:var(--border); }
+.activity-filter-toolbar button { min-width:0; white-space:nowrap; }
+.activity-filter-toolbar .filter-section-label { color:var(--muted); }
+@media (min-width: 1024px) {
+  .activity-list-only > .activity-filter-toolbar { padding:16px 18px; border:1px solid var(--border); border-radius:18px; }
+}
+
+/* Match the activity filter controls to the full-width activity grid. */
+.activity-list-only > .activity-filter-toolbar { width:100%; max-width:none; margin-inline:0; padding:16px; border:1px solid var(--border); border-radius:16px; }
+.activity-list-only > .activity-filter-toolbar .grid-cols-3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.activity-list-only > .activity-filter-toolbar button { min-height:38px; overflow:hidden; text-overflow:ellipsis; }
+@media(max-width:640px){ .activity-list-only > .activity-filter-toolbar { padding:12px; } .activity-list-only > .activity-filter-toolbar .grid-cols-3 { gap:6px; } .activity-list-only > .activity-filter-toolbar .grid-cols-3 button { padding-inline:6px; font-size:12px; } }
+
+/* v7: unified layout and shared header behaviors */
+.site-header { min-height:60px; }
+.site-header button { white-space:nowrap; }
+.notification-dropdown { background:var(--surface); color:var(--foreground); border-color:var(--border); }
+.notification-dropdown article { border-color:var(--border); }
+.activity-results-main { background:var(--background); }
+.activity-results-main .activity-card { min-height:180px; }
+.chat-workspace { display:grid; grid-template-columns:minmax(230px,270px) minmax(0,900px); align-items:stretch; justify-content:center; gap:18px; max-width:1220px; margin:0 auto; }
+.chat-activity-sidebar { align-self:start; border:1px solid var(--border); border-radius:18px; padding:20px; color:var(--foreground); background:var(--surface); }
+.chat-activity-sidebar h2 { font-size:19px; line-height:1.3; font-weight:800; margin:8px 0 5px; overflow-wrap:anywhere; }
+.chat-sidebar-eyebrow { color:#059669; font-size:10px; font-weight:800; letter-spacing:.12em; }
+.chat-activity-fact { border-top:1px solid var(--border); padding:13px 0; margin-top:7px; display:grid; gap:5px; }
+.chat-activity-fact span { font-size:11px; color:var(--muted); }
+.chat-activity-fact strong { font-size:13px; font-weight:650; overflow-wrap:anywhere; }
+.chat-sidebar-secondary,.chat-leave-button { display:block; width:100%; border-radius:10px; padding:11px 12px; font-size:13px; font-weight:700; transition:transform 160ms ease, background 160ms ease, border-color 160ms ease; }
+.chat-sidebar-secondary { border:1px solid var(--border); background:var(--surface-muted); color:var(--foreground); margin-top:10px; }
+.chat-leave-button { border:1px solid #b91c1c33; color:#dc2626; background:transparent; margin-top:8px; }
+.chat-sidebar-secondary:hover,.chat-leave-button:hover { transform:translateY(-1px); }
+.chat-sidebar-note { margin-top:13px; color:var(--muted); font-size:11px; line-height:1.55; }
+.chat-route-launcher-panel { position:fixed; right:20px; bottom:90px; width:min(340px,calc(100vw - 24px)); z-index:119; overflow:hidden; border:1px solid var(--border); border-radius:16px; box-shadow:0 14px 45px #0003; background:var(--surface); color:var(--foreground); animation:sportconnect-enter 180ms ease both; }
+@media(max-width:900px) { .chat-workspace { grid-template-columns:minmax(0,1fr); } .chat-activity-sidebar { order:2; } .chat-page-shell { width:100%; max-width:none; } }
+@media(min-width:901px) { .chat-page-shell { width:100%; max-width:none; } }
+@media(max-width:640px) { .chat-workspace { gap:12px; } .chat-activity-sidebar { padding:15px; } .activity-results-main { min-width:0; } }
+@media(max-width:639px) {
+  .activity-sidebar { max-height:58vh; width:100% !important; }
+  .activity-results-main { flex:1 1 auto; min-height:0; }
+  .chat-page-body { overflow-y:auto; }
+  .chat-page-shell { min-height:560px !important; height:calc(100vh - 100px) !important; }
+}
+
+.notification-dropdown button { color:#059669 !important; }
+.activity-results-main { animation:sportconnect-enter 240ms cubic-bezier(.2,.75,.25,1) both; }
+.map-surface { animation:sportconnect-enter 240ms cubic-bezier(.2,.75,.25,1) both; }
+
+
+/* v8: explicit split map/list toggle, compact filter card, and roomier shared header. */
+.site-header { min-height:72px !important; height:72px !important; }
+.activity-filter-panel { margin:14px; border:1px solid var(--border) !important; border-radius:18px; background:var(--surface); box-shadow:0 8px 24px #00000008; }
+.activity-filter-panel input { border-radius:11px; }
+.activity-filter-panel .grid-cols-3 button { border-radius:10px; }
+.activity-filter-panel > div:last-child .flex.flex-wrap { max-height:180px; overflow-y:auto; padding:2px 2px 6px; }
+.map-mode-toggle { min-height:40px; }
+.map-surface { min-height:0; }
+@media(max-width:900px) {
+  .activity-filter-panel { margin:10px; }
+  .activity-filter-toolbar { max-height:45vh; overflow-y:auto; }
+  .map-surface { min-height:280px; flex-basis:auto !important; }
+  .activity-results-main { flex-basis:auto !important; }
+}
+@media(max-width:639px) {
+  .site-header { min-height:64px !important; height:64px !important; }
+  .activity-filter-toolbar { max-height:50vh; }
+}
+
+/* v8: expanded sport choices remain a compact, scrollable filter block. */
+.activity-filter-panel .flex.flex-wrap.gap-2 { max-height:168px; overflow-y:auto; align-content:flex-start; padding:3px 3px 8px; scrollbar-width:thin; }
+.activity-filter-panel .flex.flex-wrap.gap-2 button { flex:0 0 auto; }
+.sport-choice-grid { max-height:min(48vh,430px); overflow-y:auto; padding:2px 5px 8px 2px; scrollbar-width:thin; }
+@media(min-width:901px) { .activity-sidebar:not(.activity-list-only) { width:370px !important; } .activity-filter-panel { margin:12px; padding:17px !important; } }
+
+
+/* v11: floating activity panel over the map; controls and cards stay together. */
+.activity-workspace-map-list { position:relative; isolation:isolate; background:var(--background); }
+.activity-workspace-map-list .activity-filter-hidden-in-map { display:none !important; }
+.activity-workspace-map-list .activity-results-floating { position:absolute; z-index:30; left:20px; top:20px; bottom:20px; width:min(690px, calc(100vw - 40px)); max-width:calc(100% - 40px); overflow:auto; border:1px solid var(--border); border-radius:20px; background:var(--surface); color:var(--foreground); box-shadow:0 20px 60px rgb(0 0 0 / 24%); }
+.activity-workspace-map-list .activity-results-inner { width:100%; max-width:none; padding:16px !important; }
+.activity-workspace-map-list .activity-floating-controls { padding:18px; box-shadow:0 5px 18px rgb(0 0 0 / 6%); }
+.activity-workspace-map-list .activity-floating-controls input { background:var(--field); color:var(--foreground); border-color:var(--border); }
+.activity-workspace-map-list .activity-floating-controls input::placeholder { color:var(--muted); }
+.activity-workspace-map-list .activity-floating-sports { max-height:128px; overflow:auto; align-content:flex-start; padding:2px 2px 6px; scrollbar-width:thin; }
+.activity-workspace-map-list .activity-floating-controls + .grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.activity-workspace-map-list .map-surface-split { position:absolute; inset:0; z-index:1; width:100%; height:100%; }
+.activity-workspace-map-list .map-surface-split > div:first-child { position:absolute; inset:0; }
+.activity-workspace-map-list .map-surface-split > .absolute.left-4 { left:auto; right:20px; top:20px; }
+.activity-workspace-map-list .activity-card { min-height:168px; }
+.activity-workspace-list-only .activity-sidebar { width:370px !important; flex-basis:370px !important; border-right:1px solid var(--border); background:var(--background); }
+.activity-workspace-list-only .activity-filter-panel { margin:12px; padding:18px !important; }
+.activity-workspace-list-only .activity-filter-panel .sport-filter-options { max-height:280px; overflow-y:auto; align-content:flex-start; }
+.activity-workspace-list-only .activity-results-main { min-width:0; flex:1 1 auto; }
+.map-pin-full { background:#737b75 !important; border-color:#a4aca6 !important; color:#e5e7eb !important; filter:grayscale(1); opacity:.72; box-shadow:0 2px 8px rgb(0 0 0 / 24%); }
+.map-pin-full:hover { opacity:1; }
+:root[data-theme="light"] .map-pin-full { background:#9ca3af !important; border-color:#d1d5db !important; color:#f9fafb !important; }
+:root[data-theme="dark"] .activity-workspace-map-list .activity-floating-controls { background:#080a09 !important; }
+:root[data-theme="dark"] .activity-workspace-map-list .activity-results-floating { background:#080a09 !important; }
+@media(max-width:900px) {
+  .activity-workspace-map-list .activity-results-floating { left:12px; top:12px; bottom:12px; width:min(620px, calc(100vw - 24px)); max-width:calc(100% - 24px); }
+  .activity-workspace-list-only .activity-sidebar { width:320px !important; flex-basis:320px !important; }
+}
+@media(max-width:639px) {
+  .activity-workspace-list-only { flex-direction:column; overflow-y:auto; }
+  .activity-workspace-list-only .activity-sidebar { width:100% !important; flex-basis:auto !important; max-height:none; overflow:visible; border-right:0; border-bottom:1px solid var(--border); }
+  .activity-workspace-list-only .activity-results-main { overflow:visible; }
+  .activity-workspace-map-list .activity-results-floating { left:8px; top:8px; bottom:8px; width:calc(100vw - 16px); max-width:calc(100% - 16px); }
+  .activity-workspace-map-list .activity-results-inner { padding:10px !important; }
+  .activity-workspace-map-list .activity-floating-controls { padding:12px; }
+  .activity-workspace-map-list .activity-floating-sports { max-height:100px; }
+}
+
+
+/* v13: wider filter/create-activity card; remove the divider rail and keep the arrow fixed on hover. */
+.activity-sidebar { background: transparent !important; border-right: 0 !important; }
+.activity-sidebar .activity-filter-panel { margin: 12px 10px 12px 14px !important; border: 1px solid var(--border) !important; border-radius: 16px !important; background: var(--surface) !important; box-shadow: 0 8px 24px rgb(0 0 0 / 10%) !important; padding: 18px 16px 20px !important; }
+.activity-sidebar .activity-filter-panel h1 { font-size: 1.2rem; line-height: 1.35; }
+.activity-sidebar .activity-filter-panel .grid-cols-2 button { min-width: 0; white-space: normal; line-height: 1.25; padding: 9px 5px; }
+.activity-sidebar .activity-filter-panel .sport-filter-options { max-height: 360px; overflow-y: auto; align-content: flex-start; }
+@media (min-width: 901px) {
+  .activity-workspace-list-only .activity-sidebar { width: 360px !important; flex-basis: 360px !important; }
+  .activity-workspace-list-only .activity-filter-panel { margin: 12px 10px 12px 14px !important; padding: 18px 16px 20px !important; }
+}
+.activity-list-expand-toggle { position: absolute; z-index: 45; top: 50%; display: grid; width: 34px; height: 54px; flex: 0 0 34px; place-items: center; transform: translateY(-50%); border: 1px solid var(--border); background: var(--surface); color: var(--foreground); box-shadow: 0 4px 18px rgb(0 0 0 / 20%); transition: background .18s ease, color .18s ease, box-shadow .18s ease; }
+.activity-list-expand-toggle:hover { width: 34px; transform: translateY(-50%); background: #047857; color: #fff; box-shadow: 0 6px 20px rgb(0 0 0 / 26%); }
+.activity-list-expand-toggle.is-expanded { right: -1px; border-radius: 12px 0 0 12px; }
+.activity-list-expand-toggle.is-collapsed { right: 0; border-radius: 12px 0 0 12px; }
+.activity-workspace-map-list .activity-results-floating { overflow-x: visible; }
+@media (max-width: 900px) {
+  .activity-sidebar .activity-filter-panel { margin: 8px !important; padding: 12px !important; }
+  .activity-list-expand-toggle, .activity-list-expand-toggle:hover { width: 30px; height: 46px; transform: translateY(-50%); }
+}
+
+
+/* v14: align the sidebar background with the page, inset the filter card, and defeat the global hover transform. */
+:root[data-theme="dark"] .sportconnect-app .activity-sidebar {
+  background: #000000 !important;
+  border-right: 0 !important;
+  padding: 12px 0 12px 12px;
+  box-sizing: border-box;
+}
+:root[data-theme="light"] .sportconnect-app .activity-sidebar {
+  background: var(--background) !important;
+  border-right: 0 !important;
+  padding: 12px 0 12px 12px;
+  box-sizing: border-box;
+}
+.activity-sidebar .activity-filter-panel {
+  margin: 0 12px 12px 0 !important;
+  width: auto;
+  box-sizing: border-box;
+}
+.activity-list-expand-toggle:not(:disabled):hover,
+.activity-list-expand-toggle:not(:disabled):focus-visible {
+  width: 34px !important;
+  transform: translateY(-50%) !important;
+}
+@media (max-width: 900px) {
+  .activity-sidebar { padding: 8px 0 8px 8px !important; }
+  .activity-sidebar .activity-filter-panel { margin: 0 8px 8px 0 !important; }
+  .activity-list-expand-toggle:not(:disabled):hover,
+  .activity-list-expand-toggle:not(:disabled):focus-visible { width: 30px !important; transform: translateY(-50%) !important; }
+}
+
+
+/* v15: wider filter card and stable arrow orientation/hover geometry. */
+@media (min-width: 901px) {
+  .activity-workspace-map-list .activity-sidebar { width: 410px !important; flex-basis: 410px !important; }
+  .activity-workspace-list-only .activity-sidebar { width: 410px !important; flex-basis: 410px !important; }
+  .activity-sidebar .activity-filter-panel { margin-left: 16px !important; margin-right: 12px !important; }
+}
+.activity-list-expand-toggle,
+.activity-list-expand-toggle:hover,
+.activity-list-expand-toggle:focus-visible {
+  width: 36px !important; min-width: 36px !important;
+  transform: translateY(-50%) !important;
+  transition: background-color .18s ease, color .18s ease, box-shadow .18s ease, border-color .18s ease !important;
+}
+.activity-list-expand-toggle.is-expanded { right: -1px !important; }
+.activity-list-expand-toggle.is-collapsed { right: 0 !important; }
+@media (max-width: 900px) {
+  .activity-workspace-map-list .activity-sidebar, .activity-workspace-list-only .activity-sidebar { width: 100% !important; flex-basis: auto !important; }
+}
+
+
+/* Direct messages: readable incoming bubbles in both themes. */
+.theme-message-incoming { background: #f1f5f2; color: #17221a; border-color: #d8e0da; }
+:root[data-theme="dark"] .theme-message-incoming { background: #202923 !important; color: #f4f7f4 !important; border-color: #3c4940 !important; }
+:root[data-theme="light"] .theme-message-incoming { background: #f1f5f2 !important; color: #17221a !important; border-color: #d8e0da !important; }
+
+
+/* v17: persistent chat hub with WhatsApp-style latest-message previews. */
+.chat-hub-root { position:fixed; right:max(1rem,env(safe-area-inset-right)); bottom:max(1rem,env(safe-area-inset-bottom)); z-index:130; display:flex; flex-direction:column; align-items:flex-end; gap:12px; }
+.chat-hub-button { display:grid; width:56px; height:56px; place-items:center; border:2px solid #047857; border-radius:999px; background:#047857; color:#fff; box-shadow:0 12px 32px rgb(0 0 0 / 28%); transition:background-color .18s,border-color .18s,box-shadow .18s; }
+.chat-hub-button:hover { background:#059669; border-color:#059669; }
+.chat-hub-panel { width:min(440px,calc(100vw - 28px)); max-height:min(72vh,680px); display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--border); border-radius:20px; color:var(--foreground); background:var(--surface); box-shadow:0 24px 70px rgb(0 0 0 / 32%); }
+.chat-hub-heading { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; background:var(--header); color:#fff; }
+.chat-hub-heading h2 { font-size:1.05rem; font-weight:800; }
+.chat-hub-heading p { margin-top:2px; font-size:11px; color:#c9d7cd; }
+.chat-hub-heading button { display:grid; width:32px; height:32px; place-items:center; border-radius:999px; font-size:24px; color:#fff; }
+.chat-hub-list { overflow-y:auto; padding:7px; }
+.chat-hub-item { display:flex; width:100%; min-width:0; align-items:center; gap:11px; padding:12px 10px; text-align:left; border-bottom:1px solid var(--border); color:var(--foreground); transition:background-color .15s; }
+.chat-hub-item:hover { background:var(--surface-muted); }
+.chat-hub-avatar { display:grid; flex:0 0 42px; width:42px; height:42px; place-items:center; border-radius:50%; background:#dff7ec; color:#047857; font-size:15px; font-weight:800; }
+.chat-hub-avatar.is-group { border-radius:14px; background:#047857; color:#fff; }
+.chat-hub-copy { display:flex; min-width:0; flex:1; flex-direction:column; gap:2px; }
+.chat-hub-title { overflow:hidden; color:var(--foreground); font-size:13px; font-weight:750; text-overflow:ellipsis; white-space:nowrap; }
+.chat-hub-subtitle { overflow:hidden; color:var(--muted); font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+.chat-hub-preview { overflow:hidden; color:var(--muted); font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
+.chat-hub-kind { align-self:flex-start; flex-shrink:0; border:1px solid var(--border); border-radius:999px; padding:3px 6px; color:var(--muted); font-size:9px; }
+.chat-hub-empty { padding:28px 18px; color:var(--muted); text-align:center; font-size:13px; line-height:1.6; }
+.chat-hub-footer { border-top:1px solid var(--border); padding:10px; }
+.chat-hub-footer button { display:flex; width:100%; justify-content:space-between; align-items:center; border-radius:10px; padding:10px 12px; color:#fff; background:#047857; font-size:12px; font-weight:700; }
+@media(min-width:901px) {
+  .activity-workspace-map-list .activity-sidebar, .activity-workspace-list-only .activity-sidebar { width:440px !important; flex-basis:440px !important; }
+  .activity-sidebar .activity-filter-panel { padding:20px 18px 22px !important; }
+}
+@media(max-width:600px) { .chat-hub-panel { max-height:68vh; } .chat-hub-kind { display:none; } }
