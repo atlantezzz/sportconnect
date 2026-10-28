@@ -17,9 +17,10 @@ sudo docker exec -i sportconnect-db psql -U sportconnect -d sportconnect
 `migrations/001_initial_schema.sql` is out of date. Known differences (2026-10-28):
 
 - `"NOTIFICATIE".doel_url` exists live but not in 001.
-- `"SPORTCONNECT_VRIENDSCHAP"` and `"SPORTCONNECT_PRIVATBERICHT"` are created at runtime by `ensure_friendship_table()` / `ensure_private_messages_table()` in `main.py`, with BIGINT ids (other tables use INT).
-- Unused tables: `RAPPORTAGE`, `GEBRUIKER_BLOKKADE`, `BERICHT_BIJLAGE`.
+- `"SPORTCONNECT_VRIENDSCHAP"` and `"SPORTCONNECT_PRIVATBERICHT"` use BIGINT ids (other tables INT); since 003 they are defined in a migration instead of being created by the backend.
+- Unused tables: `RAPPORTAGE`, `BERICHT_BIJLAGE`. `GEBRUIKER_BLOKKADE` is read (blocked users can't see each other's profile or find each other) but there is no UI to block yet.
 - `GEBRUIKER_SPORTVOORKEUR` holds sport preferences since 002: `voorkeursniveau` 3 = favoriet, 1 = verborgen.
+- 003 added `"ACTIVITEIT".niveau` and `"GEBRUIKER".geboortedatum` (`leeftijd` is kept as fallback for older accounts and kept in sync).
 
 Always check with `\d` before writing a migration. Don't trust 001.
 

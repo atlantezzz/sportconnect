@@ -7,7 +7,9 @@ description: The end-to-end pattern for SportConnect features - FastAPI endpoint
 
 Most features go through these layers in order. Copy the style of nearby code.
 
-## 1. Backend: `backend/app/main.py`
+## 1. Backend: `backend/app/routers/<area>.py`
+
+Add the endpoint to the router for its area (`@router.get/post/...`); a new area gets its own module, included in `app/main.py`. Request models go in `app/schemas.py`. Add tests in `backend/tests/` and run `backend/run-tests.sh`.
 
 ```python
 class ThingInput(BaseModel):

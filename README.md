@@ -10,7 +10,7 @@ De app is in ontwikkeling en draait nu alleen lokaal op de server. Publieke toeg
 - **Groepschat** per activiteit voor deelnemers en organisator.
 - **Vrienden en privéberichten**: gebruikers zoeken, vriendschapsverzoeken, privégesprekken tussen vrienden.
 - **Meldingen** in de app, met voorkeuren per categorie.
-- **Profiel**: naam, woonplaats, leeftijd, bio, profielfoto, favoriete en verborgen sporten, en privacykeuzes (openbaar profiel, privéberichten toestaan).
+- **Profiel**: naam, woonplaats, geboortedatum (anderen zien alleen je leeftijd), bio, profielfoto, favoriete en verborgen sporten, en privacykeuzes (openbaar profiel, privéberichten toestaan). Andere gebruikers bekijken je profiel via `/users/<id>`; je krijgt een melding als iemand dat doet.
 - **Licht en donker thema**.
 
 ## Techniek
@@ -28,7 +28,8 @@ De browser praat alleen met de frontend. De routes in `frontend/src/app/api/**/r
 ## Mappen
 
 ```
-backend/app/main.py      FastAPI-backend (alle endpoints in één bestand)
+backend/app/             FastAPI-backend: main.py koppelt de routers in routers/
+backend/tests/           API-tests (pytest), te starten met backend/run-tests.sh
 frontend/src/app/        Pagina's en API-proxyroutes (Next.js App Router)
 frontend/src/components/ Gedeelde componenten (header, kaart, formulieren, chat)
 migrations/              SQL-migraties
@@ -45,6 +46,7 @@ Nodig: Docker met Docker Compose.
    POSTGRES_PASSWORD=...
    SESSION_SECRET=...
    GEOAPIFY_API_KEY=...
+   RESEND_API_KEY=...      # optioneel: welkomstmail na registratie
    ```
 
 2. Start alles:
@@ -63,7 +65,7 @@ Na een codewijziging herbouw je alleen wat veranderd is: `docker compose up -d -
 
 - Migraties staan in `migrations/` en voer je met de hand uit:
   `docker exec -i sportconnect-db psql -U sportconnect -d sportconnect -v ON_ERROR_STOP=1 < migrations/NNN_naam.sql`
-- Let op: `001_initial_schema.sql` loopt achter op de echte database. Twee tabellen (`SPORTCONNECT_VRIENDSCHAP`, `SPORTCONNECT_PRIVATBERICHT`) worden door de backend zelf aangemaakt.
+- Let op: `001_initial_schema.sql` loopt achter op de echte database; `002` en `003` zijn daarna toegepast.
 - Maak vóór een migratie een back-up in `backups/db/` (die map staat niet in Git).
 - Verwijder nooit het volume `postgres_data` (dus geen `docker compose down -v`).
 
@@ -75,7 +77,10 @@ npx tsc --noEmit -p .                    # typecheck
 npx eslint src                           # lint
 curl -s http://127.0.0.1:8000/health     # backend
 curl -s http://127.0.0.1:8000/db-health  # database
+backend/run-tests.sh                     # API-tests (vanuit de hoofdmap)
 ```
+
+De API-tests draaien tegen de echte database met de twee testaccounts uit `~/.claude/sportconnect-test-account.env`. Alles wat ze aanmaken heet `[TEST] …` en wordt na afloop verwijderd; `backend/scripts/verwijder_testdata.sql` ruimt achtergebleven testdata op.
 
 ## Projectbeheer
 

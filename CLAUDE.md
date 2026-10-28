@@ -4,11 +4,12 @@ Dutch web app for finding and organising sport activities together (map, activit
 
 ## Stack & layout
 
-- `backend/app/main.py` — FastAPI, single file, raw SQL via psycopg 3 (`dict_row`). No ORM.
+- `backend/app/` — FastAPI package, raw SQL via psycopg 3 (`dict_row`), no ORM. `main.py` only wires routers; endpoints live in `routers/` (`auth`, `profile` incl. public `/users/{id}`, `friends`, `messages` incl. `/chats`, `activities`, `chat`, `notifications`). Shared: `config.py` (env), `db.py` (connection + SQL snippets `LOCAL_NOW_SQL`, `ACTIVITY_NOT_PAST_SQL`, `AGE_SQL`), `security.py` (session cookie, rate limiters), `schemas.py`, `notifications.py`, `ages.py`, `mailer.py` (Resend, optional `RESEND_API_KEY`).
+- `backend/tests/` — pytest API tests (in-process TestClient, real DB, both test accounts). Run `backend/run-tests.sh`; run them after every backend change.
 - `frontend/` — Next.js 16 (App Router, Turbopack, Tailwind 4), React 19, react-leaflet. Read `frontend/AGENTS.md`: this Next.js version differs from training data; check `frontend/node_modules/next/dist/docs/` before using unfamiliar APIs.
 - `frontend/src/app/api/**/route.ts` — thin proxies that forward the browser's cookie to the backend (`API_INTERNAL_URL`, default `http://api:8000`). The browser never talks to FastAPI directly.
-- `migrations/` — SQL schema. **Out of date** with the live DB (see the `db-migration` skill).
-- `compose.yml` — services `db` (postgres:17), `api` (:8000), `frontend` (:3000); both ports bound to 127.0.0.1. Secrets in `.env` (POSTGRES_PASSWORD, SESSION_SECRET, GEOAPIFY_API_KEY) — never print or copy it.
+- `migrations/` — SQL schema: `001` is out of date with the live DB; `002`, `003` are applied (see the `db-migration` skill). `backend/scripts/verwijder_testdata.sql` removes `[TEST]` data.
+- `compose.yml` — services `db` (postgres:17), `api` (:8000), `frontend` (:3000); both ports bound to 127.0.0.1. Secrets in `.env` (POSTGRES_PASSWORD, SESSION_SECRET, GEOAPIFY_API_KEY, optional RESEND_API_KEY) — never print or copy it.
 - Planned public URL: https://sportconnect.fit via a Cloudflare Tunnel to `localhost:3000` (not set up yet).
 
 ## Conventions
@@ -18,13 +19,17 @@ Dutch web app for finding and organising sport activities together (map, activit
 - Errors: `raise HTTPException(status_code=..., detail="<Dutch sentence>.")`; the frontend reads `data.detail`.
 - Writes inside `with get_connection() as conn:` commit when the block exits; explicit `conn.commit()` is optional.
 - Notify users via `create_notification(conn, user_id, categorie, titel, inhoud, activiteit_id=..., doel_url=...)`; categories are in `NOTIFICATION_CATEGORIES`.
-- Activity status values: `OPEN`, `GEANNULEERD`.
+- Activity status values: `OPEN`, `GEANNULEERD`. Activity `niveau`: `Alle niveaus`, `Beginner`, `Gemiddeld`, `Gevorderd`.
+- `GET /activities` requires login, hides activities that started more than 3 hours ago, and returns cancelled ones only to their organizer and participants.
+- Start times are Dutch local time (timestamp without time zone); other `timestamp` columns hold UTC (DB session is UTC). Return those with `AT TIME ZONE 'UTC'` so the frontend gets an offset.
+- Users have `geboortedatum`; APIs return only the computed `leeftijd` (`AGE_SQL`), never the birth date. Minimum age 13.
+- Reading a group chat never writes; only posting creates the chat/membership. Group chat notifications go to current participants + organizer.
 
 ## Known quirks (don't "fix" silently; mention them)
 
 - Frontend activity IDs are `100000 + activiteit_id` (leftover from sample data); subtract before calling the API.
-- `SPORTCONNECT_VRIENDSCHAP` and `SPORTCONNECT_PRIVATBERICHT` are created at runtime by `ensure_*_table()`, not by a migration.
-- `PUT /activities/{id}` only updates fields present in the body (omitted = unchanged, explicit `null` = cleared); `titel`, `starttijd` and `maximaal_aantal_deelnemers` are always required. The settings page doesn't send address/coordinates, so changing the location name there leaves the old pin in place.
+- Rate limits (login per e-mail/IP, register per IP) are in memory in the single API process; they reset on restart. The client IP comes from `X-Forwarded-For`, set by the Next.js auth proxies.
+- `PUT /activities/{id}` only updates fields present in the body (omitted = unchanged, explicit `null` = cleared); `titel`, `starttijd` and `maximaal_aantal_deelnemers` are always required. The settings page uses the same address search as the create form and always sends the full address.
 - Sport list and emoji/colours are hardcoded in `frontend/src/data/activities.ts` and must match the `"SPORT"` table names.
 - Theme (`data-theme` on `<html>`, localStorage `sportconnect-theme`) and the `/api/auth/me` check are duplicated in each page.
 - Navigating to `/` with `router.push("/")` showed a 404 in the browser (reported 2026-10-28, root cause not found; the server's RSC response for `/` is fine, suspect `partialPrefetching`). Links to the home page use `window.location.href = "/"` instead. Exception: the activity settings page runs inside an iframe overlay and still uses `router.push("/")`.
@@ -51,4 +56,4 @@ Rules (from the project space):
 - Never create `.bak`, `.backup`, `.before-*` copies or update zips; history is in git (`/opt/sportconnect`, branch `main`, remote `origin` = private repo https://github.com/atlantezzz/sportconnect; `gh` is logged in as atlantezzz). `frontend/` is a plain folder in this repo, not a separate repo.
 - Never run `docker compose down -v` or anything else that removes the `postgres_data` volume.
 - After a change, verify it (the `verify` skill) before saying it works; report failures with output.
-- Test account: credentials in `~/.claude/sportconnect-test-account.env` (user id 5, "Claude Testaccount"). Mark test data with `[TEST]` and clean it up.
+- Test accounts: credentials in `~/.claude/sportconnect-test-account.env` (`SC_TEST_*` = user id 5 "Claude Testaccount", `SC_TEST2_*` = user id 6, friends with 5). Mark test data with `[TEST]` and clean it up (`backend/scripts/verwijder_testdata.sql`).

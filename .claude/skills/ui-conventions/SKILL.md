@@ -24,7 +24,7 @@ description: SportConnect visual and copy conventions - Dutch UI text, emerald p
 - `<html data-theme="light|dark">`, stored in localStorage `sportconnect-theme`.
 - CSS variables in `src/app/globals.css`: `--background --foreground --surface --surface-muted --border --muted --field --header --header-border`.
 - Defined helper classes: `theme-surface`, `theme-muted`, `theme-muted-surface`, `theme-field`, `theme-icon-button`, `theme-message-incoming`, `theme-toggle`.
-- **Bug:** `theme-page`, `theme-input`, `theme-surface-muted` and `theme-foreground` are used in pages but not defined. Define them in globals.css (or use the defined ones) instead of adding more.
+- Also defined: `theme-page`, `theme-input`, `theme-surface-muted`, `theme-foreground`. The logged-out welcome page (`components/LandingPage.tsx`) has its own `--w-*` variables and `welcome-*` classes.
 - Hardcoded `bg-white`/`text-gray-900` breaks dark mode unless globals.css overrides it. Prefer the variables.
 - Check every UI change in both themes.
 
@@ -34,4 +34,6 @@ description: SportConnect visual and copy conventions - Dutch UI text, emerald p
 - Form fields: label wraps the input, required fields marked `<span className="text-red-600">*</span>`, inline error `<p role="alert">`.
 - Icon-only buttons need a Dutch `aria-label`.
 - Responsive: must work at ~400px wide. Use `sm:`/`md:`/`lg:` breakpoints as existing pages do.
-- Only one floating chat button per page (the one in `SiteHeader`). Don't add `GlobalChatLauncher` too.
+- Only one chat entry point per page: the chat panel in `SiteHeader` (fed by `/api/chats`). `GlobalChatLauncher` was removed.
+- No `window.alert`: show errors inline (`role="alert"`) or as the notice toast on the home page.
+- Motion: CSS keyframes/transitions only (no animation library); everything must respect `prefers-reduced-motion` (global rule in globals.css).
