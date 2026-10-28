@@ -16,7 +16,7 @@ npx --no-install eslint src
 python3 -m py_compile /opt/sportconnect/backend/app/main.py
 ```
 
-Baseline as of 2026-10-28: tsc clean; eslint 13 errors / 9 warnings (mostly `react-hooks/set-state-in-effect`). Don't add new ones; compare against the baseline instead of calling the old ones yours.
+Baseline as of 2026-10-28 (after the logo fix): tsc clean; eslint 12 errors / 15 warnings (errors mostly `react-hooks/set-state-in-effect`; most warnings are deliberate `window.location.href = "/"` navigations, see CLAUDE.md). Don't add new ones; compare against the baseline instead of calling the old ones yours.
 
 ## 2. Deploy
 

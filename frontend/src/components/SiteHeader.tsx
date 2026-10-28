@@ -129,8 +129,8 @@ export default function SiteHeader({ theme, onThemeToggle, userName, showMapTogg
     }).format(date);
   }
 
-  function home() { if (onHome) onHome(); else router.push("/"); }
-  async function logout() { if (onLogout) await onLogout(); else { try { await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }); } finally { router.push("/"); } } }
+  function home() { if (onHome) onHome(); else window.location.href = "/"; }
+  async function logout() { if (onLogout) await onLogout(); else { try { await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }); } finally { window.location.href = "/"; } } }
 
   return <header className="site-header relative z-50 flex h-[72px] shrink-0 items-center justify-between border-b px-4 sm:px-6 md:px-8">
     <button type="button" onClick={home} className="flex min-w-0 items-center gap-2.5" aria-label="Naar de SportConnect-hoofdpagina">

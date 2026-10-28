@@ -186,7 +186,7 @@ function ActivityChatContent() {
         theme={theme}
         onThemeToggle={() => setTheme((value) => value === "light" ? "dark" : "light")}
         userName="Ingelogd"
-        onHome={() => router.push("/")}
+        onHome={() => { window.location.href = "/"; }}
       />
       <div className="chat-page-body" style={{ padding: "24px 16px", flex: 1, minHeight: 0 }}>
       <div className="chat-workspace">
@@ -204,7 +204,7 @@ function ActivityChatContent() {
             const response = await fetch(`/api/activities/${activityId}/join`, { method: "DELETE", credentials: "same-origin" });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(data.detail || data.error || "Afmelden is niet gelukt.");
-            router.push("/");
+            window.location.href = "/";
           } catch (err) { setError(err instanceof Error ? err.message : "Afmelden is niet gelukt."); }
           finally { setLeaving(false); }
         }}>{leaving ? "Afmelden…" : "Activiteit verlaten"}</button>}
@@ -283,7 +283,7 @@ function ActivityChatContent() {
       </section>
       </div>
       </div>
-      {chatMenuOpen && <div className="chat-route-launcher-panel theme-surface" role="dialog" aria-label="Groepschats"><div className="flex items-center justify-between border-b p-3"><strong className="text-sm">Groepschats</strong><button type="button" onClick={() => setChatMenuOpen(false)} aria-label="Sluiten">×</button></div><a className="block border-b p-3 text-sm" href={`/activities/${activityId}/chat`}><strong>{activity?.titel ?? "Huidige groepschat"}</strong><span className="mt-1 block text-xs theme-muted">Je bent deze chat aan het bekijken</span></a><button type="button" className="w-full p-3 text-left text-sm font-semibold text-emerald-600" onClick={() => router.push("/")}>Activiteiten en andere groepschats bekijken →</button></div>}
+      {chatMenuOpen && <div className="chat-route-launcher-panel theme-surface" role="dialog" aria-label="Groepschats"><div className="flex items-center justify-between border-b p-3"><strong className="text-sm">Groepschats</strong><button type="button" onClick={() => setChatMenuOpen(false)} aria-label="Sluiten">×</button></div><a className="block border-b p-3 text-sm" href={`/activities/${activityId}/chat`}><strong>{activity?.titel ?? "Huidige groepschat"}</strong><span className="mt-1 block text-xs theme-muted">Je bent deze chat aan het bekijken</span></a><button type="button" className="w-full p-3 text-left text-sm font-semibold text-emerald-600" onClick={() => { window.location.href = "/"; }}>Activiteiten en andere groepschats bekijken →</button></div>}
       <button
         type="button"
         onClick={() => setChatMenuOpen((open) => !open)}

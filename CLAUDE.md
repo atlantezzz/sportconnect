@@ -27,6 +27,7 @@ Dutch web app for finding and organising sport activities together (map, activit
 - `PUT /activities/{id}` only updates fields present in the body (omitted = unchanged, explicit `null` = cleared); `titel`, `starttijd` and `maximaal_aantal_deelnemers` are always required. The settings page doesn't send address/coordinates, so changing the location name there leaves the old pin in place.
 - Sport list and emoji/colours are hardcoded in `frontend/src/data/activities.ts` and must match the `"SPORT"` table names.
 - Theme (`data-theme` on `<html>`, localStorage `sportconnect-theme`) and the `/api/auth/me` check are duplicated in each page.
+- Navigating to `/` with `router.push("/")` showed a 404 in the browser (reported 2026-10-28, root cause not found; the server's RSC response for `/` is fine, suspect `partialPrefetching`). Links to the home page use `window.location.href = "/"` instead. Exception: the activity settings page runs inside an iframe overlay and still uses `router.push("/")`.
 
 ## Notion (project management)
 
