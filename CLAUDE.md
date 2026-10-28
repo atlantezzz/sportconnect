@@ -9,7 +9,7 @@ Dutch web app for finding and organising sport activities together (map, activit
 - `backend/tests/` — pytest API tests (in-process TestClient, real DB, both test accounts). Run `backend/run-tests.sh`; run them after every backend change.
 - `frontend/` — Next.js 16 (App Router, Turbopack, Tailwind 4), React 19, react-leaflet. Read `frontend/AGENTS.md`: this Next.js version differs from training data; check `frontend/node_modules/next/dist/docs/` before using unfamiliar APIs.
 - `frontend/src/app/api/**/route.ts` — thin proxies that forward the browser's cookie to the backend (`API_INTERNAL_URL`, default `http://api:8000`). The browser never talks to FastAPI directly.
-- `migrations/` — SQL schema: `001` is out of date with the live DB; `002`–`004` are applied (see the `db-migration` skill). `backend/scripts/verwijder_testdata.sql` removes `[TEST]` data.
+- `migrations/` — SQL schema: `001`–`004` in order rebuild the live schema (see the `db-migration` skill). `backend/scripts/verwijder_testdata.sql` removes `[TEST]` data.
 - `compose.yml` — services `db` (postgres:17), `api` (:8000), `frontend` (:3000), `tunnel` (cloudflared); api/frontend ports bound to 127.0.0.1. Secrets in `.env` (POSTGRES_PASSWORD, SESSION_SECRET, GEOAPIFY_API_KEY, RESEND_API_KEY, CLOUDFLARE_TUNNEL_TOKEN) — never print or copy it, and never put a secret in tracked files.
 - **Live** since 2026-10-28 at https://sportconnect.fit (and www) via a Cloudflare Tunnel (`tunnel` service). Routing is set in the Cloudflare dashboard (Zero Trust → Tunnels) to `http://sportconnect-frontend:3000`, so the tunnel must stay on the `backend` Docker network. Anything deployed is public immediately.
 
@@ -21,7 +21,7 @@ Dutch web app for finding and organising sport activities together (map, activit
 - Writes inside `with get_connection() as conn:` commit when the block exits; explicit `conn.commit()` is optional.
 - Notify users via `create_notification(conn, user_id, categorie, titel, inhoud, activiteit_id=..., doel_url=...)`; categories are in `NOTIFICATION_CATEGORIES`.
 - Activity status values: `OPEN`, `GEANNULEERD`. Activity `niveau`: `Alle niveaus`, `Beginner`, `Gemiddeld`, `Gevorderd`.
-- `GET /activities` requires login, hides activities that started more than 3 hours ago, and returns cancelled ones only to their organizer and participants.
+- `GET /activities` requires login, hides activities that started more than 3 hours ago, and returns cancelled ones only to their organizer and participants. `GET /activities/{id}` uses the same rules (404 otherwise); the settings page loads its activity with it.
 - Locations: address search (`/api/geocode/autocomplete`) or a point picked on the map (`LocationMapPicker`, reverse geocoded via `/api/geocode/reverse`, Geoapify); both give the same location shape.
 - `/api/auth/me` answers 200 `{user: null}` when logged out (not 401), so the session check doesn't log errors.
 - Start times are Dutch local time (timestamp without time zone); other `timestamp` columns hold UTC (DB session is UTC). Return those with `AT TIME ZONE 'UTC'` so the frontend gets an offset.

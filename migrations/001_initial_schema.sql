@@ -106,7 +106,8 @@ CREATE TABLE "NOTIFICATIE" (
   "activiteit_id" int,
   "bericht_id" int,
   "gelezen_op" timestamp,
-  "aangemaakt_op" timestamp NOT NULL
+  "aangemaakt_op" timestamp NOT NULL,
+  "doel_url" text
 );
 
 CREATE TABLE "GEBRUIKER_NOTIFICATIEVOORKEUR" (

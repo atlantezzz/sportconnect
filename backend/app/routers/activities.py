@@ -26,6 +26,55 @@ def get_sports():
         return conn.execute('SELECT sport_id, naam, beschrijving FROM "SPORT" ORDER BY naam').fetchall()
 
 
+# Columns and joins shared by the activity list and the single-activity endpoint.
+_ACTIVITY_SELECT_SQL = '''
+    SELECT
+        a.activiteit_id, a.maker_id, a.titel, a.beschrijving, a.starttijd,
+        a.niveau, a.locatie_naam, a.woonplaats, a.straatnaam, a.huisnummer,
+        a.postcode, a.land, a.breedtegraad, a.lengtegraad, a.externe_locatie_id,
+        a.maximaal_aantal_deelnemers, a.status,
+        s.naam AS sport,
+        maker.naam AS organisator_naam,
+        ARRAY(
+            SELECT g.naam
+            FROM "ACTIVITEIT_DEELNEMER" ad
+            JOIN "GEBRUIKER" g ON g.gebruiker_id = ad.gebruiker_id
+            WHERE ad.activiteit_id = a.activiteit_id
+            ORDER BY CASE WHEN ad.rol = 'organisator' THEN 0 ELSE 1 END, ad.deelname_vanaf
+        ) AS deelnemers,
+        -- same order as deelnemers, so names and ids can be paired
+        ARRAY(
+            SELECT ad.gebruiker_id
+            FROM "ACTIVITEIT_DEELNEMER" ad
+            WHERE ad.activiteit_id = a.activiteit_id
+            ORDER BY CASE WHEN ad.rol = 'organisator' THEN 0 ELSE 1 END, ad.deelname_vanaf
+        ) AS deelnemer_ids,
+        (
+            SELECT COUNT(*) FROM "ACTIVITEIT_DEELNEMER" ad
+            WHERE ad.activiteit_id = a.activiteit_id
+        )
+        + CASE WHEN EXISTS (
+                SELECT 1 FROM "ACTIVITEIT_DEELNEMER" ad
+                WHERE ad.activiteit_id = a.activiteit_id AND ad.gebruiker_id = a.maker_id
+            ) THEN 0 ELSE 1 END AS aantal_deelnemers
+    FROM "ACTIVITEIT" a
+    JOIN "SPORT" s ON s.sport_id = a.sport_id
+    JOIN "GEBRUIKER" maker ON maker.gebruiker_id = a.maker_id
+'''
+
+# Cancelled activities stay visible only to their organizer and participants.
+_VISIBLE_TO_USER_SQL = '''
+    (
+        a.status <> 'GEANNULEERD'
+     OR a.maker_id = %(user_id)s
+     OR EXISTS (
+            SELECT 1 FROM "ACTIVITEIT_DEELNEMER" ad
+            WHERE ad.activiteit_id = a.activiteit_id AND ad.gebruiker_id = %(user_id)s
+        )
+    )
+'''
+
+
 @router.get("/activities")
 def get_activities(request: Request):
     """Current activities for logged-in users.
@@ -37,51 +86,7 @@ def get_activities(request: Request):
 
     with get_connection() as conn:
         return conn.execute(
-            f'''
-            SELECT
-                a.activiteit_id, a.maker_id, a.titel, a.beschrijving, a.starttijd,
-                a.niveau, a.locatie_naam, a.woonplaats, a.straatnaam, a.huisnummer,
-                a.postcode, a.land, a.breedtegraad, a.lengtegraad, a.externe_locatie_id,
-                a.maximaal_aantal_deelnemers, a.status,
-                s.naam AS sport,
-                maker.naam AS organisator_naam,
-                ARRAY(
-                    SELECT g.naam
-                    FROM "ACTIVITEIT_DEELNEMER" ad
-                    JOIN "GEBRUIKER" g ON g.gebruiker_id = ad.gebruiker_id
-                    WHERE ad.activiteit_id = a.activiteit_id
-                    ORDER BY CASE WHEN ad.rol = 'organisator' THEN 0 ELSE 1 END, ad.deelname_vanaf
-                ) AS deelnemers,
-                -- same order as deelnemers, so names and ids can be paired
-                ARRAY(
-                    SELECT ad.gebruiker_id
-                    FROM "ACTIVITEIT_DEELNEMER" ad
-                    WHERE ad.activiteit_id = a.activiteit_id
-                    ORDER BY CASE WHEN ad.rol = 'organisator' THEN 0 ELSE 1 END, ad.deelname_vanaf
-                ) AS deelnemer_ids,
-                (
-                    SELECT COUNT(*) FROM "ACTIVITEIT_DEELNEMER" ad
-                    WHERE ad.activiteit_id = a.activiteit_id
-                )
-                + CASE WHEN EXISTS (
-                        SELECT 1 FROM "ACTIVITEIT_DEELNEMER" ad
-                        WHERE ad.activiteit_id = a.activiteit_id AND ad.gebruiker_id = a.maker_id
-                    ) THEN 0 ELSE 1 END AS aantal_deelnemers
-            FROM "ACTIVITEIT" a
-            JOIN "SPORT" s ON s.sport_id = a.sport_id
-            JOIN "GEBRUIKER" maker ON maker.gebruiker_id = a.maker_id
-            WHERE {ACTIVITY_NOT_PAST_SQL}
-              AND (
-                    a.status <> 'GEANNULEERD'
-                 -- cancelled activities stay visible only to their organizer and participants
-                 OR a.maker_id = %(user_id)s
-                 OR EXISTS (
-                        SELECT 1 FROM "ACTIVITEIT_DEELNEMER" ad
-                        WHERE ad.activiteit_id = a.activiteit_id AND ad.gebruiker_id = %(user_id)s
-                    )
-              )
-            ORDER BY a.starttijd
-            ''',
+            f'{_ACTIVITY_SELECT_SQL} WHERE {ACTIVITY_NOT_PAST_SQL} AND {_VISIBLE_TO_USER_SQL} ORDER BY a.starttijd',
             {"user_id": user_id},
         ).fetchall()
 
@@ -99,6 +104,22 @@ def get_joined_activities(request: Request):
             (user_id, user_id),
         ).fetchall()
     return [row["activiteit_id"] for row in rows]
+
+
+@router.get("/activities/{activity_id}")
+def get_activity(activity_id: int, request: Request):
+    """One activity, with the same visibility rules as the list."""
+    user_id = get_session_user_id(request)
+
+    with get_connection() as conn:
+        activity = conn.execute(
+            f'{_ACTIVITY_SELECT_SQL} WHERE a.activiteit_id = %(activity_id)s AND {ACTIVITY_NOT_PAST_SQL} AND {_VISIBLE_TO_USER_SQL}',
+            {"user_id": user_id, "activity_id": activity_id},
+        ).fetchone()
+
+    if not activity:
+        raise HTTPException(status_code=404, detail="Deze activiteit bestaat niet (meer).")
+    return activity
 
 
 @router.post("/activities", status_code=201)

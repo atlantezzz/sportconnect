@@ -144,6 +144,24 @@ def test_past_activities_are_hidden(user_a):
         conn.execute('UPDATE "ACTIVITEIT" SET starttijd = %s WHERE activiteit_id = %s',
                      (now - timedelta(hours=5), created["activiteit_id"]))
     assert created["activiteit_id"] not in listed(user_a)
+    assert user_a.get(f"/activities/{created['activiteit_id']}").status_code == 404
+
+
+def test_single_activity_matches_list(user_a, user_b, anon):
+    created = create_activity(user_a, niveau="Beginner")
+    activity_id = created["activiteit_id"]
+    response = user_b.get(f"/activities/{activity_id}")
+    assert response.status_code == 200, response.text
+    assert response.json() == listed(user_b)[activity_id]
+    assert anon.get(f"/activities/{activity_id}").status_code == 401
+    assert user_a.get("/activities/999999999").status_code == 404
+
+
+def test_single_cancelled_activity_only_for_organizer_and_participants(user_a, user_b):
+    created = create_activity(user_a, titel=f"{TEST_PREFIX} los geannuleerd")
+    user_a.post(f"/activities/{created['activiteit_id']}/cancel")
+    assert user_a.get(f"/activities/{created['activiteit_id']}").json()["status"] == "GEANNULEERD"
+    assert user_b.get(f"/activities/{created['activiteit_id']}").status_code == 404
 
 
 def test_transfer_organizer(user_a, user_b):

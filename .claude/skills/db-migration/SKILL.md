@@ -14,15 +14,15 @@ sudo docker exec -i sportconnect-db psql -U sportconnect -d sportconnect
 
 ## The live DB is the source of truth
 
-`migrations/001_initial_schema.sql` is out of date. Known differences (2026-10-28):
+Running `001`–`004` in order on an empty database gives exactly the live schema (checked 2026-10-28 with a `pg_dump -s` diff on a scratch database). Re-run that check after a new migration. Notes:
 
-- `"NOTIFICATIE".doel_url` exists live but not in 001.
+- Live also has a leftover table `"SPORTCONNECT_PRIVAT_BERICHT_backup_20261026"`; no migration creates it on purpose.
 - `"SPORTCONNECT_VRIENDSCHAP"` and `"SPORTCONNECT_PRIVATBERICHT"` use BIGINT ids (other tables INT); since 003 they are defined in a migration instead of being created by the backend.
 - Unused tables: `RAPPORTAGE`, `BERICHT_BIJLAGE`. `GEBRUIKER_BLOKKADE` is read (blocked users can't see each other's profile or find each other) but there is no UI to block yet.
 - `GEBRUIKER_SPORTVOORKEUR` holds sport preferences since 002: `voorkeursniveau` 3 = favoriet, 1 = verborgen.
 - 003 added `"ACTIVITEIT".niveau` and `"GEBRUIKER".geboortedatum` (`leeftijd` is kept as fallback for older accounts and kept in sync).
 
-Always check with `\d` before writing a migration. Don't trust 001.
+Always check with `\d` before writing a migration.
 
 ## Procedure
 

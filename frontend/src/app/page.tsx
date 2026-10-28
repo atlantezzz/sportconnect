@@ -27,6 +27,13 @@ async function fetchSportPreferences(): Promise<SportPreferences | null> {
   }
 }
 
+// The full address usually already contains the town; only add it when it doesn't.
+function locationLabel(address: string | null, town: string | null): string {
+  if (!address) return town ?? "";
+  if (!town || address.toLowerCase().includes(town.toLowerCase())) return address;
+  return `${address}, ${town}`;
+}
+
 // Current activities for the logged-in user, mapped for the UI (ids offset by 100000).
 async function fetchActivityList(): Promise<Activity[] | null> {
   try {
@@ -76,9 +83,7 @@ async function fetchActivityList(): Promise<Activity[] | null> {
         id: 100000 + row.activiteit_id,
         sport: row.sport,
         title: row.titel,
-        location: [row.locatie_naam, row.woonplaats]
-          .filter(Boolean)
-          .join(", "),
+        location: locationLabel(row.locatie_naam, row.woonplaats),
         latitude: row.breedtegraad ?? null,
         longitude: row.lengtegraad ?? null,
         time: `${dateLabel.charAt(0).toUpperCase()}${dateLabel.slice(1)}, ${timeLabel}`,

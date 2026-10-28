@@ -149,24 +149,21 @@ function ActivitySettingsContent() {
     setError("");
 
     try {
-      const response = await fetch("/api/activities", {
+      const response = await fetch(`/api/activities/${activityId}`, {
         cache: "no-store",
       });
 
-      if (!response.ok) {
-        throw new Error("Activiteiten ophalen mislukt.");
-      }
-
-      const rows: ActivityRow[] = await response.json();
-      const found = rows.find(
-        (row) => row.activiteit_id === Number(activityId),
-      );
-
-      if (!found) {
+      if (response.status === 404) {
         setError("Activiteit niet gevonden.");
         setActivity(null);
         return;
       }
+
+      if (!response.ok) {
+        throw new Error("Activiteit ophalen mislukt.");
+      }
+
+      const found: ActivityRow = await response.json();
 
       setActivity(found);
       setForm({
