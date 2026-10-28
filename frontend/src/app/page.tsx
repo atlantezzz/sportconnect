@@ -209,6 +209,7 @@ export default function Home() {
             ],
             x: 20 + ((row.activiteit_id * 17) % 60),
             y: 20 + ((row.activiteit_id * 23) % 60),
+            status: row.status === "GEANNULEERD" ? "GEANNULEERD" : undefined,
           };
         });
 
@@ -255,7 +256,6 @@ export default function Home() {
     const locationQuery = location.trim().toLowerCase();
 
     const filtered = activityList.filter((activity) => {
-      if (activity.status === "GEANNULEERD") return false;
       if (hiddenSports.includes(activity.sport)) return false;
 
       const isFriendActivity =
@@ -287,7 +287,7 @@ export default function Home() {
         matchesLocation
       );
     });
-    return [...filtered].sort((a, b) => Number(a.participants >= a.capacity) - Number(b.participants >= b.capacity) || Number(favoriteSports.includes(b.sport)) - Number(favoriteSports.includes(a.sport)));
+    return [...filtered].sort((a, b) => Number(a.status === "GEANNULEERD") - Number(b.status === "GEANNULEERD") || Number(a.participants >= a.capacity) - Number(b.participants >= b.capacity) || Number(favoriteSports.includes(b.sport)) - Number(favoriteSports.includes(a.sport)));
   }, [
     activityList,
     selectedSport,

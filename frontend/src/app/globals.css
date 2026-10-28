@@ -158,6 +158,9 @@ body { background: var(--background); color: var(--foreground); font-family: Ari
 :root[data-theme="dark"] .settings-page .text-emerald-700 { color:#34d399 !important; }
 :root[data-theme="dark"] .settings-page .text-red-700 { color:#fca5a5 !important; }
 :root[data-theme="dark"] .settings-page .bg-red-50 { background:#2a1010 !important; }
+:root[data-theme="dark"] .sportconnect-app .activity-card.activity-card-cancelled { border-color:#7f1d1d !important; border-left-color:#ef4444 !important; }
+:root[data-theme="dark"] .activity-card-cancelled .text-red-700 { color:#fca5a5 !important; }
+:root[data-theme="dark"] .activity-card-cancelled .bg-red-50 { background:#2a1010 !important; }
 :root[data-theme="dark"] .settings-page .bg-amber-50 { background:#29200b !important; }
 :root[data-theme="dark"] .settings-page .text-amber-800 { color:#fcd34d !important; }
 :root[data-theme="dark"] .settings-page .text-red-800 { color:#fca5a5 !important; }

@@ -13,20 +13,25 @@ export default function ActivityCard({
   compact?: boolean;
 }) {
   const isFull = activity.participants >= activity.capacity;
+  const isCancelled = activity.status === "GEANNULEERD";
 
-  const status = isJoined ? "DEELNEMEND" : isFull ? "VOL" : "OPEN";
+  const status = isCancelled ? "GEANNULEERD" : isJoined ? "DEELNEMEND" : isFull ? "VOL" : "OPEN";
 
-  const statusColor = isJoined
-    ? "text-blue-700"
-    : isFull
-      ? "text-gray-500"
-      : "text-emerald-700";
+  const statusColor = isCancelled
+    ? "rounded-md bg-red-50 px-2 py-1 text-red-700"
+    : isJoined
+      ? "text-blue-700"
+      : isFull
+        ? "text-gray-500"
+        : "text-emerald-700";
 
-  const dotColor = isJoined
-    ? "bg-blue-500"
-    : isFull
-      ? "bg-gray-400"
-      : "bg-emerald-500";
+  const dotColor = isCancelled
+    ? "bg-red-500"
+    : isJoined
+      ? "bg-blue-500"
+      : isFull
+        ? "bg-gray-400"
+        : "bg-emerald-500";
 
   const progress = Math.min(
     100,
@@ -34,7 +39,7 @@ export default function ActivityCard({
   );
 
   return (
-    <article className={`activity-card h-full min-w-0 rounded-xl border border-gray-200 bg-white transition hover:border-emerald-300 hover:shadow-sm ${compact ? "activity-card-compact" : ""}`}>
+    <article className={`activity-card h-full min-w-0 rounded-xl border bg-white transition hover:shadow-sm ${isCancelled ? "activity-card-cancelled border-red-300 border-l-4 border-l-red-500" : "border-gray-200 hover:border-emerald-300"} ${compact ? "activity-card-compact" : ""}`}>
       <div className={compact ? "p-3" : "p-4"}>
         <div className={`${compact ? "mb-2" : "mb-3"} flex items-center justify-between gap-2`}>
           <span
@@ -51,9 +56,14 @@ export default function ActivityCard({
           </span>
         </div>
 
-        <h3 className="text-[15px] font-semibold text-gray-900">
+        <h3 className={`text-[15px] font-semibold ${isCancelled ? "text-gray-500 line-through" : "text-gray-900"}`}>
           {activity.title}
         </h3>
+        {isCancelled && (
+          <p className="mt-1 text-xs font-medium text-red-700">
+            Deze activiteit is geannuleerd door de organisator.
+          </p>
+        )}
 
         <div className={`${compact ? "mt-1.5 space-y-1" : "mt-2 space-y-1.5"} text-sm text-gray-500`}>
           <p>{activity.time}</p>

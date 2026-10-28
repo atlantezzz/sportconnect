@@ -58,6 +58,14 @@ def get_session_user_id(request: Request) -> int:
         )
 
 
+def optional_session_user_id(request: Request) -> int | None:
+    """The logged-in user's id, or None for visitors and invalid/expired sessions."""
+    try:
+        return get_session_user_id(request)
+    except HTTPException:
+        return None
+
+
 def set_session_cookie(response: Response, user_id: int):
     response.set_cookie(
         key=SESSION_COOKIE,
@@ -980,7 +988,9 @@ def get_sports():
 
 
 @app.get("/activities")
-def get_activities():
+def get_activities(request: Request):
+    user_id = optional_session_user_id(request)
+
     with get_connection() as conn:
         rows = conn.execute(
             '''
@@ -1034,8 +1044,18 @@ def get_activities():
                   END AS aantal_deelnemers
             FROM "ACTIVITEIT" a
             JOIN "SPORT" s ON s.sport_id = a.sport_id
+            -- cancelled activities stay visible only to their organizer and participants
+            WHERE a.status <> 'GEANNULEERD'
+               OR a.maker_id = %(user_id)s
+               OR EXISTS (
+                    SELECT 1
+                    FROM "ACTIVITEIT_DEELNEMER" ad
+                    WHERE ad.activiteit_id = a.activiteit_id
+                      AND ad.gebruiker_id = %(user_id)s
+               )
             ORDER BY a.starttijd
-            '''
+            ''',
+            {"user_id": user_id},
         ).fetchall()
 
     return rows

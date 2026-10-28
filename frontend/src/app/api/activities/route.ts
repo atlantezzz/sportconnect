@@ -4,9 +4,12 @@ import { NextResponse } from "next/server";
 const apiUrl = () =>
   process.env.API_INTERNAL_URL ?? "http://api:8000";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // The cookie decides whether cancelled activities are included (organizer/participants only).
+    const cookie = request.headers.get("cookie");
     const response = await fetch(`${apiUrl()}/activities`, {
+      headers: cookie ? { cookie } : {},
       cache: "no-store",
     });
 
