@@ -98,3 +98,12 @@ class PrivateMessageInput(BaseModel):
 
 class ChatMessageInput(BaseModel):
     inhoud: str = Field(min_length=1, max_length=4000)
+
+
+class PasswordResetRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str = Field(min_length=20, max_length=200)
+    wachtwoord: str = Field(min_length=8, max_length=128)

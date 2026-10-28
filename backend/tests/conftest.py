@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 
 from app.db import get_connection
 from app.main import app
-from app.security import failed_login_limiter, login_ip_limiter, register_ip_limiter
+from app.security import ALL_LIMITERS
 
 TEST_PREFIX = "[TEST]"
 REGISTER_EMAIL_PATTERN = "claude-test-reg-%@sportconnect.fit"
@@ -98,7 +98,7 @@ def test_data_session(accounts):
 
 @pytest.fixture(autouse=True)
 def reset_rate_limits():
-    for limiter in (failed_login_limiter, login_ip_limiter, register_ip_limiter):
+    for limiter in ALL_LIMITERS:
         limiter.reset()
     yield
 

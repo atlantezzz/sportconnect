@@ -640,3 +640,8 @@ button:not(:disabled):active { transform:translateY(1px) scale(.98); }
   .welcome-device { transform: none; }
   .welcome-toast { opacity: 1; }
 }
+
+/* Standalone account pages (wachtwoord vergeten / herstellen). */
+.auth-card-page { background: radial-gradient(900px 420px at 80% -10%, color-mix(in srgb, #10b981 14%, var(--background)), var(--background) 70%); }
+.auth-card-bar { background: linear-gradient(90deg, #047857, #10b981, #84cc16); }
+.auth-card-page section { animation: sportconnect-enter 320ms cubic-bezier(.2,.75,.25,1) both; }

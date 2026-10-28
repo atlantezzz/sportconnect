@@ -8,7 +8,7 @@ Dutch web app for finding and organising sport activities together (map, activit
 - `backend/tests/` — pytest API tests (in-process TestClient, real DB, both test accounts). Run `backend/run-tests.sh`; run them after every backend change.
 - `frontend/` — Next.js 16 (App Router, Turbopack, Tailwind 4), React 19, react-leaflet. Read `frontend/AGENTS.md`: this Next.js version differs from training data; check `frontend/node_modules/next/dist/docs/` before using unfamiliar APIs.
 - `frontend/src/app/api/**/route.ts` — thin proxies that forward the browser's cookie to the backend (`API_INTERNAL_URL`, default `http://api:8000`). The browser never talks to FastAPI directly.
-- `migrations/` — SQL schema: `001` is out of date with the live DB; `002`, `003` are applied (see the `db-migration` skill). `backend/scripts/verwijder_testdata.sql` removes `[TEST]` data.
+- `migrations/` — SQL schema: `001` is out of date with the live DB; `002`–`004` are applied (see the `db-migration` skill). `backend/scripts/verwijder_testdata.sql` removes `[TEST]` data.
 - `compose.yml` — services `db` (postgres:17), `api` (:8000), `frontend` (:3000), `tunnel` (cloudflared); api/frontend ports bound to 127.0.0.1. Secrets in `.env` (POSTGRES_PASSWORD, SESSION_SECRET, GEOAPIFY_API_KEY, RESEND_API_KEY, CLOUDFLARE_TUNNEL_TOKEN) — never print or copy it, and never put a secret in tracked files.
 - **Live** since 2026-10-28 at https://sportconnect.fit (and www) via a Cloudflare Tunnel (`tunnel` service). Routing is set in the Cloudflare dashboard (Zero Trust → Tunnels) to `http://sportconnect-frontend:3000`, so the tunnel must stay on the `backend` Docker network. Anything deployed is public immediately.
 
@@ -23,6 +23,8 @@ Dutch web app for finding and organising sport activities together (map, activit
 - `GET /activities` requires login, hides activities that started more than 3 hours ago, and returns cancelled ones only to their organizer and participants.
 - Start times are Dutch local time (timestamp without time zone); other `timestamp` columns hold UTC (DB session is UTC). Return those with `AT TIME ZONE 'UTC'` so the frontend gets an offset.
 - Users have `geboortedatum`; APIs return only the computed `leeftijd` (`AGE_SQL`), never the birth date. Minimum age 13.
+- Sessions: the cookie carries `"GEBRUIKER".sessie_versie` and every request checks it; a password reset raises it, ending all other sessions. Password reset: `POST /auth/password-reset/request` (always the same answer) and `/confirm`; links `{APP_URL}/wachtwoord-herstellen?token=…`, valid 60 min, one use, only the SHA-256 hash is stored in `"WACHTWOORD_HERSTEL"`.
+- E-mails (welcome, reset, password changed) are built in `app/mailer.py` (table layout, inline styles, logo `frontend/public/email-logo.png`). Test real sends with `delivered@resend.dev`, never with `@sportconnect.fit` addresses (no inbox; bounces hurt the domain).
 - Reading a group chat never writes; only posting creates the chat/membership. Group chat notifications go to current participants + organizer.
 
 ## Known quirks (don't "fix" silently; mention them)

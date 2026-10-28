@@ -9,6 +9,8 @@ COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "false").lower() == "true"
 # Optional: outgoing e-mail via Resend. Without a key, mails are skipped (logged).
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 MAIL_FROM = os.environ.get("MAIL_FROM", "SportConnect <noreply@sportconnect.fit>")
+# Public address of the site, used for links in e-mails.
+APP_URL = os.environ.get("APP_URL", "https://sportconnect.fit").rstrip("/")
 
 # Start times are stored as Dutch local time (timestamp without time zone).
 LOCAL_TIMEZONE = "Europe/Amsterdam"

@@ -7,13 +7,14 @@ from fastapi import HTTPException, Request, Response
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 from app.config import COOKIE_SECURE, SESSION_COOKIE, SESSION_MAX_AGE, SESSION_SECRET
+from app.db import get_connection
 
 password_hasher = PasswordHasher()
 serializer = URLSafeTimedSerializer(SESSION_SECRET, salt="sportconnect-session")
 
 
-def create_session_token(user_id: int) -> str:
-    return serializer.dumps({"user_id": user_id})
+def create_session_token(user_id: int, session_version: int) -> str:
+    return serializer.dumps({"user_id": user_id, "v": session_version})
 
 
 def get_session_user_id(request: Request) -> int:
@@ -30,13 +31,22 @@ def get_session_user_id(request: Request) -> int:
     user_id = data.get("user_id")
     if not isinstance(user_id, int) or user_id <= 0:
         raise HTTPException(status_code=401, detail="Ongeldige sessie. Log opnieuw in.")
+
+    # Raising "GEBRUIKER".sessie_versie (password reset) ends all older sessions.
+    # Cookies from before version numbers existed count as version 0.
+    with get_connection() as conn:
+        user = conn.execute(
+            'SELECT sessie_versie FROM "GEBRUIKER" WHERE gebruiker_id = %s', (user_id,)
+        ).fetchone()
+    if not user or user["sessie_versie"] != data.get("v", 0):
+        raise HTTPException(status_code=401, detail="Je sessie is verlopen. Log opnieuw in.")
     return user_id
 
 
-def set_session_cookie(response: Response, user_id: int):
+def set_session_cookie(response: Response, user_id: int, session_version: int):
     response.set_cookie(
         key=SESSION_COOKIE,
-        value=create_session_token(user_id),
+        value=create_session_token(user_id, session_version),
         max_age=SESSION_MAX_AGE,
         httponly=True,
         secure=COOKIE_SECURE,
@@ -102,10 +112,15 @@ class RateLimiter:
                 self._hits.pop(key, None)
 
 
-# Failed logins per e-mail address, all login attempts per IP, registrations per IP.
+# Failed logins per e-mail address, all login attempts per IP, registrations per IP,
+# password-reset requests per IP and per e-mail address.
 failed_login_limiter = RateLimiter(limit=5, window_seconds=15 * 60)
 login_ip_limiter = RateLimiter(limit=30, window_seconds=15 * 60)
 register_ip_limiter = RateLimiter(limit=5, window_seconds=60 * 60)
+reset_ip_limiter = RateLimiter(limit=10, window_seconds=15 * 60)
+reset_email_limiter = RateLimiter(limit=3, window_seconds=60 * 60)
+
+ALL_LIMITERS = (failed_login_limiter, login_ip_limiter, register_ip_limiter, reset_ip_limiter, reset_email_limiter)
 
 
 def enforce_rate_limit(limiter: RateLimiter, key: str):

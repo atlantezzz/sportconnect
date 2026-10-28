@@ -1,13 +1,16 @@
+import hashlib
 import re
+import secrets
 
 from argon2.exceptions import VerificationError, VerifyMismatchError
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response
 from psycopg.errors import UniqueViolation
 
 from app.ages import validate_birth_date
+from app.config import APP_URL
 from app.db import AGE_SQL, get_connection
-from app.mailer import send_welcome_email
-from app.schemas import LoginInput, RegisterInput
+from app.mailer import send_password_changed_email, send_password_reset_email, send_welcome_email
+from app.schemas import LoginInput, PasswordResetConfirm, PasswordResetRequest, RegisterInput
 from app.security import (
     clear_session_cookie,
     client_ip,
@@ -17,6 +20,8 @@ from app.security import (
     login_ip_limiter,
     password_hasher,
     register_ip_limiter,
+    reset_email_limiter,
+    reset_ip_limiter,
     set_session_cookie,
 )
 
@@ -34,7 +39,7 @@ def public_user(user: dict) -> dict:
     }
 
 
-USER_COLUMNS = f"g.gebruiker_id, g.naam, g.email, {AGE_SQL} AS leeftijd, g.woonplaats, g.land"
+USER_COLUMNS = f"g.gebruiker_id, g.naam, g.email, {AGE_SQL} AS leeftijd, g.woonplaats, g.land, g.sessie_versie"
 
 
 @router.post("/auth/register", status_code=201)
@@ -76,7 +81,7 @@ def register(data: RegisterInput, request: Request, response: Response, backgrou
     except UniqueViolation:
         raise HTTPException(status_code=409, detail="Er bestaat al een account met dit e-mailadres.")
 
-    set_session_cookie(response, user["gebruiker_id"])
+    set_session_cookie(response, user["gebruiker_id"], user["sessie_versie"])
     background.add_task(send_welcome_email, email, naam)
     return {"user": public_user(user)}
 
@@ -104,7 +109,7 @@ def login(data: LoginInput, request: Request, response: Response):
         raise HTTPException(status_code=401, detail="E-mailadres of wachtwoord is onjuist.")
 
     failed_login_limiter.reset(email)
-    set_session_cookie(response, user["gebruiker_id"])
+    set_session_cookie(response, user["gebruiker_id"], user["sessie_versie"])
     return {"user": public_user(user)}
 
 
@@ -127,3 +132,92 @@ def current_user(request: Request):
 def logout(response: Response):
     clear_session_cookie(response)
     return {"status": "ok"}
+
+
+RESET_VALID_MINUTES = 60
+RESET_REQUESTED_MESSAGE = (
+    "Als er een account met dit e-mailadres bestaat, ontvang je binnen een paar minuten "
+    "een e-mail met een link om een nieuw wachtwoord in te stellen."
+)
+
+
+def _token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+@router.post("/auth/password-reset/request")
+def request_password_reset(data: PasswordResetRequest, request: Request, background: BackgroundTasks):
+    """Mail a one-time reset link. Always the same answer, so it doesn't reveal which addresses exist."""
+    email = data.email.strip().lower()
+    ip = client_ip(request)
+    enforce_rate_limit(reset_ip_limiter, ip)
+    reset_ip_limiter.hit(ip)
+    if reset_email_limiter.retry_after(email):
+        return {"detail": RESET_REQUESTED_MESSAGE}
+    reset_email_limiter.hit(email)
+
+    with get_connection() as conn:
+        user = conn.execute(
+            'SELECT gebruiker_id, naam, email FROM "GEBRUIKER" WHERE email = %s', (email,)
+        ).fetchone()
+        if user:
+            token = secrets.token_urlsafe(32)
+            # Only the newest link works.
+            conn.execute(
+                'UPDATE "WACHTWOORD_HERSTEL" SET gebruikt_op = NOW() WHERE gebruiker_id = %s AND gebruikt_op IS NULL',
+                (user["gebruiker_id"],),
+            )
+            conn.execute(
+                f'''
+                INSERT INTO "WACHTWOORD_HERSTEL" (gebruiker_id, token_hash, verloopt_op)
+                VALUES (%s, %s, NOW() + INTERVAL '{RESET_VALID_MINUTES} minutes')
+                ''',
+                (user["gebruiker_id"], _token_hash(token)),
+            )
+            reset_url = f"{APP_URL}/wachtwoord-herstellen?token={token}"
+            background.add_task(send_password_reset_email, user["email"], user["naam"], reset_url, RESET_VALID_MINUTES)
+
+    return {"detail": RESET_REQUESTED_MESSAGE}
+
+
+@router.post("/auth/password-reset/confirm")
+def confirm_password_reset(data: PasswordResetConfirm, request: Request, response: Response, background: BackgroundTasks):
+    """Set a new password with a reset link, end all other sessions and log in."""
+    ip = client_ip(request)
+    enforce_rate_limit(reset_ip_limiter, ip)
+    reset_ip_limiter.hit(ip)
+
+    with get_connection() as conn:
+        reset = conn.execute(
+            '''
+            SELECT herstel_id, gebruiker_id FROM "WACHTWOORD_HERSTEL"
+            WHERE token_hash = %s AND gebruikt_op IS NULL AND verloopt_op > NOW()
+            FOR UPDATE
+            ''',
+            (_token_hash(data.token),),
+        ).fetchone()
+        if not reset:
+            raise HTTPException(
+                status_code=400,
+                detail="Deze link is ongeldig of verlopen. Vraag een nieuwe link aan.",
+            )
+
+        conn.execute('UPDATE "WACHTWOORD_HERSTEL" SET gebruikt_op = NOW() WHERE gebruiker_id = %s AND gebruikt_op IS NULL',
+                     (reset["gebruiker_id"],))
+        conn.execute(
+            '''
+            UPDATE "GEBRUIKER"
+            SET wachtwoord_hash = %s, sessie_versie = sessie_versie + 1, bijgewerkt_op = CURRENT_TIMESTAMP
+            WHERE gebruiker_id = %s
+            ''',
+            (password_hasher.hash(data.wachtwoord), reset["gebruiker_id"]),
+        )
+        user = conn.execute(
+            f'SELECT {USER_COLUMNS} FROM "GEBRUIKER" g WHERE g.gebruiker_id = %s',
+            (reset["gebruiker_id"],),
+        ).fetchone()
+
+    failed_login_limiter.reset(user["email"])
+    set_session_cookie(response, user["gebruiker_id"], user["sessie_versie"])
+    background.add_task(send_password_changed_email, user["email"], user["naam"])
+    return {"user": public_user(user)}

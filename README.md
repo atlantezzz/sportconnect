@@ -10,6 +10,7 @@ De app is in ontwikkeling en draait nu alleen lokaal op de server. Publieke toeg
 - **Groepschat** per activiteit voor deelnemers en organisator.
 - **Vrienden en privéberichten**: gebruikers zoeken, vriendschapsverzoeken, privégesprekken tussen vrienden.
 - **Meldingen** in de app, met voorkeuren per categorie.
+- **E-mail** via Resend: welkomstmail na registratie en wachtwoord vergeten/herstellen (`/wachtwoord-vergeten`).
 - **Profiel**: naam, woonplaats, geboortedatum (anderen zien alleen je leeftijd), bio, profielfoto, favoriete en verborgen sporten, en privacykeuzes (openbaar profiel, privéberichten toestaan). Andere gebruikers bekijken je profiel via `/users/<id>`; je krijgt een melding als iemand dat doet.
 - **Licht en donker thema**.
 
@@ -65,7 +66,7 @@ Na een codewijziging herbouw je alleen wat veranderd is: `docker compose up -d -
 
 - Migraties staan in `migrations/` en voer je met de hand uit:
   `docker exec -i sportconnect-db psql -U sportconnect -d sportconnect -v ON_ERROR_STOP=1 < migrations/NNN_naam.sql`
-- Let op: `001_initial_schema.sql` loopt achter op de echte database; `002` en `003` zijn daarna toegepast.
+- Let op: `001_initial_schema.sql` loopt achter op de echte database; `002` t/m `004` zijn daarna toegepast.
 - Maak vóór een migratie een back-up in `backups/db/` (die map staat niet in Git).
 - Verwijder nooit het volume `postgres_data` (dus geen `docker compose down -v`).
 

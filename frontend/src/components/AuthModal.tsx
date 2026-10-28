@@ -229,6 +229,11 @@ export default function AuthModal({
               required
               className="w-full rounded-lg border border-gray-200 px-3 py-3 text-sm"
             />
+            {!isRegister && (
+              <a href="/wachtwoord-vergeten" className="mt-2 inline-block text-sm font-semibold text-emerald-700 hover:underline">
+                Wachtwoord vergeten?
+              </a>
+            )}
           </div>
 
           {isRegister && (
