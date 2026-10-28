@@ -1,18 +1,7 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-
-export type GeoapifyLocation = {
-  id: string | null;
-  formatted: string;
-  straatnaam: string | null;
-  huisnummer: string | null;
-  postcode: string | null;
-  woonplaats: string | null;
-  land: string | null;
-  breedtegraad: number | null;
-  lengtegraad: number | null;
-};
+import { useState, type FormEvent } from "react";
+import LocationAutocomplete, { type GeoapifyLocation } from "@/components/LocationAutocomplete";
 
 export type NewActivityInput = {
   sport: string;
@@ -54,68 +43,6 @@ export default function ActivityForm({
   const [location, setLocation] = useState("");
   const [selectedLocation, setSelectedLocation] =
     useState<GeoapifyLocation | null>(null);
-  const [locationSuggestions, setLocationSuggestions] =
-    useState<GeoapifyLocation[]>([]);
-  const [locationLoading, setLocationLoading] = useState(false);
-  const [locationError, setLocationError] = useState("");
-
-  useEffect(() => {
-    const query = location.trim();
-
-    if (query.length < 3 || selectedLocation?.formatted === query) {
-      setLocationSuggestions([]);
-      setLocationLoading(false);
-      setLocationError("");
-      return;
-    }
-
-    const controller = new AbortController();
-
-    const timer = window.setTimeout(async () => {
-      setLocationLoading(true);
-      setLocationError("");
-
-      try {
-        const response = await fetch(
-          `/api/geocode/autocomplete?text=${encodeURIComponent(query)}`,
-          {
-            signal: controller.signal,
-            cache: "no-store",
-          },
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error ?? "Adressen ophalen is mislukt.");
-        }
-
-        if (!controller.signal.aborted) {
-          setLocationSuggestions(
-            Array.isArray(data.features) ? data.features : [],
-          );
-        }
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          setLocationSuggestions([]);
-          setLocationError(
-            error instanceof Error
-              ? error.message
-              : "Adreszoeken is tijdelijk niet beschikbaar.",
-          );
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setLocationLoading(false);
-        }
-      }
-    }, 350);
-
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [location, selectedLocation]);
 
   const [description, setDescription] = useState("");
   const [level, setLevel] = useState("Alle niveaus");
@@ -242,80 +169,22 @@ export default function ActivityForm({
                 Locatie <span className="text-red-600">*</span>
               </label>
 
-              <input
+              <LocationAutocomplete
                 id="activity-location"
                 value={location}
-                onChange={(event) => {
-                  setLocation(event.target.value);
+                selected={selectedLocation}
+                onValueChange={(value) => {
+                  setLocation(value);
                   setSelectedLocation(null);
                   setError("");
                 }}
-                maxLength={200}
-                required
-                autoComplete="off"
-                placeholder="Zoek een straat, adres of sportlocatie..."
-                className={inputClassName}
-                aria-autocomplete="list"
-                aria-expanded={locationSuggestions.length > 0}
-                aria-controls="activity-location-suggestions"
+                onSelect={(suggestion) => {
+                  setSelectedLocation(suggestion);
+                  setLocation(suggestion.formatted);
+                  setError("");
+                }}
+                inputClassName={inputClassName}
               />
-
-              {locationLoading && (
-                <p className="mt-1 text-xs text-gray-500">
-                  Adressen zoeken…
-                </p>
-              )}
-
-              {locationError && (
-                <p role="status" className="mt-1 text-xs text-red-600">
-                  {locationError}
-                </p>
-              )}
-
-              {locationSuggestions.length > 0 && (
-                <ul
-                  id="activity-location-suggestions"
-                  className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
-                >
-                  {locationSuggestions.map((suggestion, index) => (
-                    <li key={suggestion.id ?? `${suggestion.formatted}-${index}`}>
-                      <button
-                        type="button"
-                        className="w-full px-3 py-2 text-left text-sm text-gray-800 hover:bg-emerald-50 focus:bg-emerald-50 focus:outline-none"
-                        onClick={() => {
-                          setSelectedLocation(suggestion);
-                          setLocation(suggestion.formatted);
-                          setLocationSuggestions([]);
-                          setLocationError("");
-                          setError("");
-                        }}
-                      >
-                        <span className="block font-medium">
-                          {suggestion.formatted}
-                        </span>
-                        {suggestion.postcode && (
-                          <span className="mt-0.5 block text-xs text-gray-500">
-                            {suggestion.postcode}
-                          </span>
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {selectedLocation && (
-                <p className="mt-1 text-xs text-emerald-700">
-                  Adres geselecteerd
-                  {selectedLocation.postcode
-                    ? ` · ${selectedLocation.postcode}`
-                    : ""}
-                </p>
-              )}
-
-              <p className="mt-1 text-xs font-normal text-gray-500">
-                Selecteer een adres uit de resultaten om de juiste locatie op de kaart vast te leggen.
-              </p>
             </div>
 
             <label className={labelClassName}>

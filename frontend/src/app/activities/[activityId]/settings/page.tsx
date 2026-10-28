@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
+import LocationAutocomplete, { type GeoapifyLocation } from "@/components/LocationAutocomplete";
 
 type ActivityRow = {
   activiteit_id: number;
@@ -11,6 +12,13 @@ type ActivityRow = {
   starttijd: string;
   locatie_naam: string | null;
   woonplaats: string | null;
+  straatnaam: string | null;
+  huisnummer: string | null;
+  postcode: string | null;
+  land: string | null;
+  breedtegraad: number | null;
+  lengtegraad: number | null;
+  externe_locatie_id: string | null;
   maximaal_aantal_deelnemers: number;
   status: string;
   sport: string;
@@ -27,8 +35,6 @@ type SettingsForm = {
   titel: string;
   beschrijving: string;
   datumtijd: string;
-  locatie: string;
-  woonplaats: string;
   capaciteit: number;
 };
 
@@ -54,6 +60,26 @@ function errorMessage(data: unknown, fallback: string) {
   }
 
   return fallback;
+}
+
+// The saved address as a selected location, so the field starts filled in and
+// is accepted without searching again. Older activities without coordinates
+// have none and need a new address picked.
+function savedLocation(row: ActivityRow): GeoapifyLocation | null {
+  if (typeof row.breedtegraad !== "number" || typeof row.lengtegraad !== "number") {
+    return null;
+  }
+  return {
+    id: row.externe_locatie_id,
+    formatted: row.locatie_naam ?? "",
+    straatnaam: row.straatnaam,
+    huisnummer: row.huisnummer,
+    postcode: row.postcode,
+    woonplaats: row.woonplaats,
+    land: row.land,
+    breedtegraad: row.breedtegraad,
+    lengtegraad: row.lengtegraad,
+  };
 }
 
 export default function ActivitySettingsPage() {
@@ -85,10 +111,10 @@ function ActivitySettingsContent() {
     titel: "",
     beschrijving: "",
     datumtijd: "",
-    locatie: "",
-    woonplaats: "",
     capaciteit: 2,
   });
+  const [locationText, setLocationText] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState<GeoapifyLocation | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -134,10 +160,10 @@ function ActivitySettingsContent() {
         titel: found.titel,
         beschrijving: found.beschrijving ?? "",
         datumtijd: toLocalDateTime(found.starttijd),
-        locatie: found.locatie_naam ?? "",
-        woonplaats: found.woonplaats ?? "",
         capaciteit: found.maximaal_aantal_deelnemers,
       });
+      setLocationText(found.locatie_naam ?? "");
+      setSelectedLocation(savedLocation(found));
 
       if (found.status === "OPEN") {
         const membersResponse = await fetch(
@@ -177,6 +203,15 @@ function ActivitySettingsContent() {
 
     if (!activity) return;
 
+    if (
+      !selectedLocation ||
+      typeof selectedLocation.breedtegraad !== "number" ||
+      typeof selectedLocation.lengtegraad !== "number"
+    ) {
+      setError("Kies een locatie: typ een adres en selecteer het uit de suggesties.");
+      return;
+    }
+
     if (form.capaciteit < activity.aantal_deelnemers || form.capaciteit > 50) {
       setError(
         `De capaciteit moet tussen ${activity.aantal_deelnemers} en 50 liggen.`,
@@ -194,8 +229,15 @@ function ActivitySettingsContent() {
           titel: form.titel.trim(),
           beschrijving: form.beschrijving.trim() || null,
           starttijd: form.datumtijd,
-          locatie_naam: form.locatie.trim() || null,
-          woonplaats: form.woonplaats.trim() || null,
+          locatie_naam: selectedLocation.formatted,
+          woonplaats: selectedLocation.woonplaats,
+          straatnaam: selectedLocation.straatnaam,
+          huisnummer: selectedLocation.huisnummer,
+          postcode: selectedLocation.postcode,
+          land: selectedLocation.land,
+          breedtegraad: selectedLocation.breedtegraad,
+          lengtegraad: selectedLocation.lengtegraad,
+          externe_locatie_id: selectedLocation.id,
           maximaal_aantal_deelnemers: Number(form.capaciteit),
         }),
       });
@@ -451,32 +493,27 @@ function ActivitySettingsContent() {
               />
             </label>
 
-            <div className="grid gap-5 sm:grid-cols-2">
-              <label className={labelClass}>
-                Locatie
-                <input
-                  value={form.locatie}
-                  onChange={(event) =>
-                    setForm({ ...form, locatie: event.target.value })
-                  }
-                  className={inputClass}
-                  disabled={!isOpen || saving}
-                  placeholder="Bijv. Sportpark"
-                />
+            <div className={`${labelClass} relative`}>
+              <label htmlFor="settings-location">
+                Locatie <span className="text-red-600">*</span>
               </label>
-
-              <label className={labelClass}>
-                Woonplaats
-                <input
-                  value={form.woonplaats}
-                  onChange={(event) =>
-                    setForm({ ...form, woonplaats: event.target.value })
-                  }
-                  className={inputClass}
-                  disabled={!isOpen || saving}
-                  placeholder="Bijv. Eindhoven"
-                />
-              </label>
+              <LocationAutocomplete
+                id="settings-location"
+                value={locationText}
+                selected={selectedLocation}
+                onValueChange={(value) => {
+                  setLocationText(value);
+                  setSelectedLocation(null);
+                  setSuccess("");
+                }}
+                onSelect={(location) => {
+                  setSelectedLocation(location);
+                  setLocationText(location.formatted);
+                  setError("");
+                }}
+                inputClassName={inputClass}
+                disabled={!isOpen || saving}
+              />
             </div>
 
             <label className={labelClass}>
