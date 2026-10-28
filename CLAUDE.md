@@ -48,7 +48,7 @@ Rules (from the project space):
 
 ## Working rules
 
-- Never create `.bak`, `.backup`, `.before-*` copies or update zips; history is in git (`/opt/sportconnect`, branch `main`, local only, no remote). `frontend/` is a plain folder in this repo, not a separate repo.
+- Never create `.bak`, `.backup`, `.before-*` copies or update zips; history is in git (`/opt/sportconnect`, branch `main`, remote `origin` = private repo https://github.com/atlantezzz/sportconnect; `gh` is logged in as atlantezzz). `frontend/` is a plain folder in this repo, not a separate repo.
 - Never run `docker compose down -v` or anything else that removes the `postgres_data` volume.
 - After a change, verify it (the `verify` skill) before saying it works; report failures with output.
 - Test account: credentials in `~/.claude/sportconnect-test-account.env` (user id 5, "Claude Testaccount"). Mark test data with `[TEST]` and clean it up.
