@@ -645,3 +645,29 @@ button:not(:disabled):active { transform:translateY(1px) scale(.98); }
 .auth-card-page { background: radial-gradient(900px 420px at 80% -10%, color-mix(in srgb, #10b981 14%, var(--background)), var(--background) 70%); }
 .auth-card-bar { background: linear-gradient(90deg, #047857, #10b981, #84cc16); }
 .auth-card-page section { animation: sportconnect-enter 320ms cubic-bezier(.2,.75,.25,1) both; }
+
+/* Map: sport pins (Leaflet divIcon) and controls per theme. */
+.sport-pin-wrapper { background: none; border: 0; }
+.sport-pin {
+  position: relative; display: block; width: 40px; height: 40px; margin: 0 auto;
+  border-radius: 50% 50% 50% 0; transform: rotate(-45deg); transform-origin: center;
+  background: #ffffff; border: 3px solid #047857; box-shadow: 0 6px 14px rgba(6, 40, 26, .32);
+  transition: transform 160ms ease, border-color 160ms ease; cursor: pointer;
+}
+.sport-pin-emoji { position: absolute; inset: 0; display: grid; place-items: center; transform: rotate(45deg); font-size: 19px; line-height: 1; }
+.sport-pin:hover { transform: rotate(-45deg) translate(2px, -2px); }
+.sport-pin.is-full { border-color: #9ca3af; }
+.sport-pin.is-selected { width: 48px; height: 48px; border-color: #f97316; border-width: 4px; }
+.sport-pin.is-selected .sport-pin-emoji { font-size: 23px; }
+.leaflet-marker-icon:focus-visible .sport-pin { outline: 3px solid #34d399; outline-offset: 3px; }
+.activity-map[data-map-theme="dark"] .sport-pin { background: #0c110e; border-color: #34d399; box-shadow: 0 6px 16px rgba(0, 0, 0, .6); }
+.activity-map[data-map-theme="dark"] .sport-pin.is-full { border-color: #6b7280; }
+.activity-map[data-map-theme="dark"] .sport-pin.is-selected { border-color: #fb923c; }
+.activity-map[data-map-theme="dark"] .leaflet-container { background: #0e1110; }
+.activity-map[data-map-theme="dark"] .leaflet-bar a { background: #121a15; color: #f3f7f4; border-color: #2b302d; }
+.activity-map[data-map-theme="dark"] .leaflet-bar a:hover { background: #1b2620; }
+.activity-map[data-map-theme="dark"] .leaflet-control-attribution { background: rgba(12, 17, 14, .8); color: #a9b6ad; }
+.activity-map[data-map-theme="dark"] .leaflet-control-attribution a { color: #6ee7b7; }
+:root[data-theme="dark"] .map-label { background: rgba(12, 17, 14, .9) !important; border-color: #2b302d !important; }
+:root[data-theme="dark"] .map-label .text-gray-900 { color: #f3f7f4 !important; }
+:root[data-theme="dark"] .map-label .text-gray-600 { color: #a9b6ad !important; }

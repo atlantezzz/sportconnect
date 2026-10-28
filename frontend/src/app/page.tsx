@@ -690,7 +690,7 @@ export default function Home() {
                 onActivityClick={openActivity}
                 className="absolute inset-0"
               />
-              <div className="pointer-events-none absolute left-4 top-4 z-[500] rounded-xl border border-gray-200/80 bg-white/95 px-3 py-2 shadow-sm">
+              <div className="pointer-events-none absolute left-4 top-4 z-[500] map-label rounded-xl border border-gray-200/80 bg-white/95 px-3 py-2 shadow-sm">
                 <p className="text-sm font-semibold text-gray-900">Activiteiten op de kaart</p>
                 <p className="mt-0.5 text-xs text-gray-600">
                   {filteredActivities.filter((a) => a.latitude != null && a.longitude != null).length} met locatie
@@ -710,7 +710,7 @@ export default function Home() {
                 onActivityClick={openActivity}
                 className="absolute inset-0"
               />
-              <div className="pointer-events-none absolute left-5 top-5 z-[500] rounded-xl border border-gray-200/80 bg-white/95 px-4 py-3 shadow-sm md:left-6 md:top-6">
+              <div className="pointer-events-none absolute left-5 top-5 z-[500] map-label rounded-xl border border-gray-200/80 bg-white/95 px-4 py-3 shadow-sm md:left-6 md:top-6">
                 <p className="text-sm font-semibold text-gray-900">Sportactiviteiten in de buurt</p>
                 <p className="mt-0.5 text-xs text-gray-600">
                   {filteredActivities.filter((a) => a.latitude != null && a.longitude != null).length} met locatie
