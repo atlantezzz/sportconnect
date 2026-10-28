@@ -10,8 +10,9 @@ export async function POST(request: Request) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // For rate limiting per client in the backend.
-        "x-forwarded-for": request.headers.get("x-forwarded-for") ?? "",
+        // For rate limiting per client in the backend. Behind Cloudflare the
+        // visitor's address is in CF-Connecting-IP (X-Forwarded-For can be spoofed).
+        "x-forwarded-for": request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for") ?? "",
       },
       body: JSON.stringify(body),
       cache: "no-store",
