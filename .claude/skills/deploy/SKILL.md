@@ -34,6 +34,14 @@ If a build fails, show the relevant log lines and don't retry blindly.
 - `docker compose down -v`, `docker volume rm`, or `docker system prune --volumes`: these delete the database.
 - Print `.env` or `docker compose config` output (it contains secrets).
 
-## Public access (planned)
+## Public access (live)
 
-Target: Cloudflare Tunnel `sportconnect.fit` → `http://localhost:3000`. `cloudflared` is not installed yet (as of 2026-10-28). `COOKIE_SECURE=true` means login only works over HTTPS or on `localhost`, so it will not work from a plain `http://<ip>:3000`.
+https://sportconnect.fit runs through the `tunnel` service (cloudflared, token `CLOUDFLARE_TUNNEL_TOKEN` in `.env`). The Cloudflare dashboard routes `sportconnect.fit` and `www` to `http://sportconnect-frontend:3000` on the `backend` network.
+
+```bash
+docker compose up -d tunnel                      # (re)start the tunnel
+docker logs --tail 20 sportconnect-tunnel        # expect "Registered tunnel connection"
+curl -s -o /dev/null -w '%{http_code}\n' https://sportconnect.fit/   # 200; 530 = tunnel down
+```
+
+Every frontend/api deploy is public right away. `COOKIE_SECURE=true` means login only works over HTTPS or on `localhost`. An old standalone container named `cloudflared` (broken, empty token) may still exist; it is not used.

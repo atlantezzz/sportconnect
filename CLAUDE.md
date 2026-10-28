@@ -9,8 +9,8 @@ Dutch web app for finding and organising sport activities together (map, activit
 - `frontend/` — Next.js 16 (App Router, Turbopack, Tailwind 4), React 19, react-leaflet. Read `frontend/AGENTS.md`: this Next.js version differs from training data; check `frontend/node_modules/next/dist/docs/` before using unfamiliar APIs.
 - `frontend/src/app/api/**/route.ts` — thin proxies that forward the browser's cookie to the backend (`API_INTERNAL_URL`, default `http://api:8000`). The browser never talks to FastAPI directly.
 - `migrations/` — SQL schema: `001` is out of date with the live DB; `002`, `003` are applied (see the `db-migration` skill). `backend/scripts/verwijder_testdata.sql` removes `[TEST]` data.
-- `compose.yml` — services `db` (postgres:17), `api` (:8000), `frontend` (:3000); both ports bound to 127.0.0.1. Secrets in `.env` (POSTGRES_PASSWORD, SESSION_SECRET, GEOAPIFY_API_KEY, optional RESEND_API_KEY) — never print or copy it.
-- Planned public URL: https://sportconnect.fit via a Cloudflare Tunnel to `localhost:3000` (not set up yet).
+- `compose.yml` — services `db` (postgres:17), `api` (:8000), `frontend` (:3000), `tunnel` (cloudflared); api/frontend ports bound to 127.0.0.1. Secrets in `.env` (POSTGRES_PASSWORD, SESSION_SECRET, GEOAPIFY_API_KEY, RESEND_API_KEY, CLOUDFLARE_TUNNEL_TOKEN) — never print or copy it, and never put a secret in tracked files.
+- **Live** since 2026-10-28 at https://sportconnect.fit (and www) via a Cloudflare Tunnel (`tunnel` service). Routing is set in the Cloudflare dashboard (Zero Trust → Tunnels) to `http://sportconnect-frontend:3000`, so the tunnel must stay on the `backend` Docker network. Anything deployed is public immediately.
 
 ## Conventions
 
@@ -48,7 +48,6 @@ Rules (from the project space):
 - Keep "ontworpen", "geïmplementeerd" and "getest" explicitly separate. Write down what actually happened, including what was *not* done.
 - Set a task to **Klaar** only after its acceptance criteria are tested. Don't change a status the user set without asking; annotate instead (`## Opmerking code-review — <datum>`).
 - New bugs go in the task database with Verwacht / Werkelijk / Reproduceren / Oorzaak / Voorstel.
-- Public access via Cloudflare / sportconnect.fit is out of scope until the user explicitly asks.
 - At the end of a work session: update task statuses and both logbooks where relevant.
 
 ## Working rules
