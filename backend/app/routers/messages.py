@@ -143,6 +143,7 @@ def get_chat_overview(request: Request):
         {
             "sleutel": f"group-{row['activiteit_id']}",
             "soort": "groep",
+            "sport": row["sport"],
             "titel": row["titel"],
             "subtitel": " · ".join(part for part in (row["sport"], row["woonplaats"]) if part),
             "geannuleerd": row["status"] == "GEANNULEERD",
@@ -154,6 +155,7 @@ def get_chat_overview(request: Request):
         {
             "sleutel": f"private-{row['gebruiker_id']}",
             "soort": "prive",
+            "sport": None,
             "titel": row["naam"],
             "subtitel": "Privébericht",
             "geannuleerd": False,

@@ -67,6 +67,7 @@ def test_chat_overview(user_a, user_b, friends):
     group = chats[f"group-{activity_id}"]
     assert group["laatste_bericht"]["inhoud"] == f"{TEST_PREFIX} groep"
     assert group["href"] == f"/activities/{activity_id}/chat"
+    assert group["sport"] == "Basketbal"
     private = chats[f"private-{user_b.user['gebruiker_id']}"]
     assert private["laatste_bericht"]["inhoud"] == f"{TEST_PREFIX} privé"
     assert private["laatste_bericht"]["afzender_naam"] == user_b.user["naam"]
