@@ -134,6 +134,35 @@ class OrganizerTransfer(BaseModel):
     nieuwe_organisator_id: int = Field(gt=0)
 
 
+# Base64 data URL of a raster image; ~1.5 MB file → ~2 MB of text. No SVG (can carry scripts).
+PROFILE_PHOTO_PATTERN = r"^data:image/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$"
+
+
+class ProfileUpdate(BaseModel):
+    naam: str | None = Field(default=None, min_length=2, max_length=100)
+    woonplaats: str | None = Field(default=None, min_length=2, max_length=100)
+    leeftijd: int | None = Field(default=None, ge=13, le=120)
+    bio: str | None = Field(default=None, max_length=500)
+    profielfoto: str | None = Field(default=None, max_length=2_100_000, pattern=PROFILE_PHOTO_PATTERN)
+    profiel_openbaar: bool | None = None
+    priveberichten_toestaan: bool | None = None
+    favoriete_sporten_tonen: bool | None = None
+
+
+# Columns that may be cleared with an explicit null.
+PROFILE_NULLABLE_FIELDS = {"bio", "profielfoto"}
+
+
+class SportPreferencesInput(BaseModel):
+    favoriet: list[str] = Field(default_factory=list, max_length=50)
+    verborgen: list[str] = Field(default_factory=list, max_length=50)
+
+
+# "GEBRUIKER_SPORTVOORKEUR".voorkeursniveau values
+SPORT_LEVEL_FAVORITE = 3
+SPORT_LEVEL_HIDDEN = 1
+
+
 
 
 
@@ -615,6 +644,99 @@ def logout(response: Response):
     return {"status": "ok"}
 
 
+def _sport_preferences(conn, user_id: int) -> dict:
+    rows = conn.execute(
+        '''
+        SELECT s.naam, v.voorkeursniveau
+        FROM "GEBRUIKER_SPORTVOORKEUR" v
+        JOIN "SPORT" s ON s.sport_id = v.sport_id
+        WHERE v.gebruiker_id = %s
+        ORDER BY s.naam
+        ''',
+        (user_id,),
+    ).fetchall()
+    return {
+        "favoriet": [r["naam"] for r in rows if r["voorkeursniveau"] == SPORT_LEVEL_FAVORITE],
+        "verborgen": [r["naam"] for r in rows if r["voorkeursniveau"] == SPORT_LEVEL_HIDDEN],
+    }
+
+
+def _own_profile(conn, user_id: int) -> dict:
+    profile = conn.execute(
+        '''
+        SELECT gebruiker_id, naam, email, leeftijd, woonplaats, land, bio,
+               profielfoto, profiel_openbaar, priveberichten_toestaan,
+               favoriete_sporten_tonen
+        FROM "GEBRUIKER"
+        WHERE gebruiker_id = %s
+        ''',
+        (user_id,),
+    ).fetchone()
+    if not profile:
+        raise HTTPException(status_code=401, detail="Account niet gevonden.")
+    return {**profile, "sporten": _sport_preferences(conn, user_id)}
+
+
+@app.get("/profile")
+def get_profile(request: Request):
+    user_id = get_session_user_id(request)
+    with get_connection() as conn:
+        return _own_profile(conn, user_id)
+
+
+@app.put("/profile")
+def update_profile(changes: ProfileUpdate, request: Request):
+    user_id = get_session_user_id(request)
+
+    # Only fields the client sent are changed; null only clears optional fields.
+    sent_fields = changes.model_dump(exclude_unset=True)
+    for column, value in sent_fields.items():
+        if isinstance(value, str):
+            value = sent_fields[column] = value.strip() or None
+        if value is None and column not in PROFILE_NULLABLE_FIELDS:
+            raise HTTPException(status_code=422, detail="Naam, woonplaats, leeftijd en privacykeuzes mogen niet leeg zijn.")
+
+    with get_connection() as conn:
+        if sent_fields:
+            # Column names come from ProfileUpdate, never from user input.
+            set_clause = ", ".join(f"{column} = %s" for column in sent_fields)
+            conn.execute(
+                f'UPDATE "GEBRUIKER" SET {set_clause}, bijgewerkt_op = CURRENT_TIMESTAMP WHERE gebruiker_id = %s',
+                (*sent_fields.values(), user_id),
+            )
+        return _own_profile(conn, user_id)
+
+
+@app.put("/profile/sport-preferences")
+def update_sport_preferences(preferences: SportPreferencesInput, request: Request):
+    user_id = get_session_user_id(request)
+    favorite = set(preferences.favoriet)
+    hidden = set(preferences.verborgen)
+    if favorite & hidden:
+        raise HTTPException(status_code=422, detail="Een sport kan niet tegelijk favoriet en verborgen zijn.")
+
+    with get_connection() as conn:
+        sport_ids = {
+            row["naam"]: row["sport_id"]
+            for row in conn.execute(
+                'SELECT sport_id, naam FROM "SPORT" WHERE naam = ANY(%s)',
+                (list(favorite | hidden),),
+            ).fetchall()
+        }
+        unknown = (favorite | hidden) - sport_ids.keys()
+        if unknown:
+            raise HTTPException(status_code=422, detail=f"Onbekende sport: {', '.join(sorted(unknown))}.")
+
+        conn.execute('DELETE FROM "GEBRUIKER_SPORTVOORKEUR" WHERE gebruiker_id = %s', (user_id,))
+        for names, level in ((favorite, SPORT_LEVEL_FAVORITE), (hidden, SPORT_LEVEL_HIDDEN)):
+            for name in names:
+                conn.execute(
+                    'INSERT INTO "GEBRUIKER_SPORTVOORKEUR" (gebruiker_id, sport_id, voorkeursniveau) VALUES (%s, %s, %s)',
+                    (user_id, sport_ids[name], level),
+                )
+        return _sport_preferences(conn, user_id)
+
+
 
 def ensure_friendship_table(conn):
     conn.execute("""
@@ -677,7 +799,9 @@ def search_users(request: Request, q: str = ""):
     with get_connection() as conn:
         ensure_friendship_table(conn)
         rows = conn.execute("""
-            SELECT g.gebruiker_id, g.naam, g.woonplaats,
+            SELECT g.gebruiker_id, g.naam,
+                   -- private profiles only show their town to friends
+                   CASE WHEN g.profiel_openbaar OR v.status = 'accepted' THEN g.woonplaats END AS woonplaats,
                    v.status AS vriendschapsstatus,
                    CASE WHEN v.aangevraagd_door = %s THEN 'sent' ELSE 'received' END AS richting
             FROM "GEBRUIKER" g
@@ -821,9 +945,11 @@ def send_private_message(friend_user_id: int, payload: PrivateMessageInput, requ
         ensure_friendship_table(conn)
         require_friendship(conn, user_id, friend_user_id)
         ensure_private_messages_table(conn)
-        recipient = conn.execute('SELECT gebruiker_id FROM "GEBRUIKER" WHERE gebruiker_id = %s', (friend_user_id,)).fetchone()
+        recipient = conn.execute('SELECT gebruiker_id, priveberichten_toestaan FROM "GEBRUIKER" WHERE gebruiker_id = %s', (friend_user_id,)).fetchone()
         if not recipient:
             raise HTTPException(status_code=404, detail="Gebruiker niet gevonden.")
+        if not recipient["priveberichten_toestaan"]:
+            raise HTTPException(status_code=403, detail="Deze gebruiker ontvangt op dit moment geen privéberichten.")
         message = conn.execute('''
             INSERT INTO "SPORTCONNECT_PRIVATBERICHT" (afzender_id, ontvanger_id, inhoud)
             VALUES (%s, %s, %s)

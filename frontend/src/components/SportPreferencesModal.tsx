@@ -5,19 +5,29 @@ import { sports } from "@/data/activities";
 
 type Props = { onClose: () => void; onSaved: (favorite: string[], hidden: string[]) => void };
 
-const STORAGE_KEY = "sportconnect-sport-preferences";
+type SportPreferences = { favoriet?: string[]; verborgen?: string[]; detail?: string };
 
 export default function SportPreferencesModal({ onClose, onSaved }: Props) {
   const [favorite, setFavorite] = useState<string[]>([]);
   const [hidden, setHidden] = useState<string[]>([]);
   const [step, setStep] = useState<"favorite" | "hidden">("favorite");
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-      setFavorite(Array.isArray(saved.favorite) ? saved.favorite : []);
-      setHidden(Array.isArray(saved.hidden) ? saved.hidden : []);
-    } catch {}
+    let cancelled = false;
+    fetch("/api/profile", { cache: "no-store" })
+      .then(async (response) => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.detail ?? "Je voorkeuren konden niet worden geladen.");
+        if (cancelled) return;
+        setFavorite(data.sporten?.favoriet ?? []);
+        setHidden(data.sporten?.verborgen ?? []);
+        setLoaded(true);
+      })
+      .catch((e) => { if (!cancelled) setError(e instanceof Error ? e.message : "Je voorkeuren konden niet worden geladen."); });
+    return () => { cancelled = true; };
   }, []);
 
   function toggle(name: string, group: "favorite" | "hidden") {
@@ -28,10 +38,25 @@ export default function SportPreferencesModal({ onClose, onSaved }: Props) {
     else setFavorite((items) => items.filter((s) => s !== name));
   }
 
-  function save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ favorite, hidden }));
-    onSaved(favorite, hidden);
-    onClose();
+  async function save() {
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      const response = await fetch("/api/profile/sport-preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ favoriet: favorite, verborgen: hidden }),
+      });
+      const data: SportPreferences | null = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(typeof data?.detail === "string" ? data.detail : "Je voorkeuren konden niet worden opgeslagen.");
+      onSaved(data?.favoriet ?? favorite, data?.verborgen ?? hidden);
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Je voorkeuren konden niet worden opgeslagen.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   const choices = sports.filter((name) => name !== "Alles");
@@ -60,9 +85,10 @@ export default function SportPreferencesModal({ onClose, onSaved }: Props) {
             </button>;
           })}
         </div>
+        {error && <p role="alert" className="mt-5 rounded-xl border border-red-400/40 bg-red-500/10 p-3 text-sm">{error}</p>}
         <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
           <button type="button" onClick={onClose} className="rounded-xl border px-4 py-3 text-sm font-semibold">Later instellen</button>
-          <button type="button" onClick={save} className="rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-emerald-600">Voorkeuren opslaan</button>
+          <button type="button" onClick={() => void save()} disabled={!loaded || saving} className="rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50">{saving ? "Opslaan…" : "Voorkeuren opslaan"}</button>
         </div>
         <p className="mt-3 text-xs theme-muted">Je kunt deze keuzes later wijzigen via je profiel. Je kunt altijd terugkomen op je voorkeuren.</p>
       </section>

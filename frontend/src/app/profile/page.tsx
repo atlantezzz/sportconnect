@@ -20,8 +20,25 @@ type ProfileSettings = {
   hiddenSports: string[];
 };
 
-const PROFILE_KEY = "sportconnect-profile-settings";
-const PREFS_KEY = "sportconnect-sport-preferences";
+type ServerProfile = {
+  gebruiker_id: number; naam: string; email: string; leeftijd: number; woonplaats: string;
+  bio: string | null; profielfoto: string | null;
+  profiel_openbaar: boolean; priveberichten_toestaan: boolean; favoriete_sporten_tonen: boolean;
+  sporten: { favoriet: string[]; verborgen: string[] };
+  detail?: string;
+};
+
+function fromServer(data: ServerProfile): ProfileSettings {
+  return {
+    displayName: data.naam, city: data.woonplaats, age: String(data.leeftijd),
+    bio: data.bio ?? "", photo: data.profielfoto ?? "",
+    publicProfile: data.profiel_openbaar, allowMessages: data.priveberichten_toestaan,
+    showFavoriteSports: data.favoriete_sporten_tonen,
+    favoriteSports: data.sporten.favoriet, hiddenSports: data.sporten.verborgen,
+  };
+}
+
+const PHOTO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 const defaults: ProfileSettings = {
   displayName: "", city: "", age: "", bio: "", photo: "",
   publicProfile: true, allowMessages: true, showFavoriteSports: true,
@@ -110,6 +127,8 @@ export default function ProfilePage() {
   const [email, setEmail] = useState("");
   const [profile, setProfile] = useState<ProfileSettings>(defaults);
   const [saved, setSaved] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [preferencesOpen, setPreferencesOpen] = useState(false);
 
@@ -118,25 +137,17 @@ export default function ProfilePage() {
     const activeTheme = storedTheme === "dark" ? "dark" : "light";
     setTheme(activeTheme);
     document.documentElement.dataset.theme = activeTheme;
-    try {
-      const stored = JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}");
-      const prefs = JSON.parse(localStorage.getItem(PREFS_KEY) || "{}");
-      setProfile({ ...defaults, ...stored, favoriteSports: prefs.favorite ?? stored.favoriteSports ?? [], hiddenSports: prefs.hidden ?? stored.hiddenSports ?? [] });
-    } catch {}
-    fetch("/api/auth/me", { cache: "no-store", credentials: "same-origin" })
+    fetch("/api/profile", { cache: "no-store", credentials: "same-origin" })
       .then(async (r) => {
-        if (!r.ok) throw new Error("Log in om je profiel te bekijken.");
-        const data = await r.json();
-        setUserId(data.user?.gebruiker_id ?? null);
-        setEmail(data.user?.email ?? "");
-        setProfile((current) => ({
-          ...current,
-          displayName: current.displayName || data.user?.naam || "",
-          age: current.age || (data.user?.leeftijd != null ? String(data.user.leeftijd) : ""),
-          city: current.city || data.user?.woonplaats || "",
-        }));
+        const data: ServerProfile = await r.json();
+        if (r.status === 401) throw new Error("Je bent niet ingelogd. Ga terug naar SportConnect en log in.");
+        if (!r.ok) throw new Error(data.detail ?? "Je profiel kon niet worden geladen.");
+        setUserId(data.gebruiker_id);
+        setEmail(data.email);
+        setProfile(fromServer(data));
+        setLoaded(true);
       })
-      .catch(() => setError("Je bent niet ingelogd. Ga terug naar SportConnect en log in."));
+      .catch((e) => setError(e instanceof Error ? e.message : "Je profiel kon niet worden geladen."));
   }, []);
 
   function update<K extends keyof ProfileSettings>(key: K, value: ProfileSettings[K]) {
@@ -147,7 +158,7 @@ export default function ProfilePage() {
   function handlePhoto(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) { setError("Kies een afbeeldingsbestand."); return; }
+    if (!PHOTO_TYPES.includes(file.type)) { setError("Kies een JPG-, PNG-, WebP- of GIF-afbeelding."); return; }
     if (file.size > 1_500_000) { setError("De foto mag maximaal 1,5 MB zijn. Verklein de afbeelding en probeer opnieuw."); return; }
     const reader = new FileReader();
     reader.onload = () => { update("photo", String(reader.result)); setError(""); };
@@ -155,11 +166,44 @@ export default function ProfilePage() {
     reader.readAsDataURL(file);
   }
 
-  function save(event: FormEvent) {
+  async function save(event: FormEvent) {
     event.preventDefault();
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-    localStorage.setItem(PREFS_KEY, JSON.stringify({ favorite: profile.favoriteSports, hidden: profile.hiddenSports }));
-    setSaved(true);
+    if (saving || !loaded) return;
+    setSaving(true);
+    setError("");
+    try {
+      const response = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          naam: profile.displayName,
+          woonplaats: profile.city,
+          leeftijd: Number(profile.age),
+          bio: profile.bio.trim() || null,
+          profielfoto: profile.photo || null,
+          profiel_openbaar: profile.publicProfile,
+          priveberichten_toestaan: profile.allowMessages,
+          favoriete_sporten_tonen: profile.showFavoriteSports,
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(typeof data?.detail === "string" ? data.detail : "Je profiel kon niet worden opgeslagen. Controleer de velden.");
+
+      const sportsResponse = await fetch("/api/profile/sport-preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ favoriet: profile.favoriteSports, verborgen: profile.hiddenSports.filter((s) => !profile.favoriteSports.includes(s)) }),
+      });
+      const sportsData = await sportsResponse.json().catch(() => null);
+      if (!sportsResponse.ok) throw new Error(sportsData?.detail ?? "Je sportvoorkeuren konden niet worden opgeslagen.");
+
+      setProfile(fromServer({ ...data, sporten: sportsData }));
+      setSaved(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Je profiel kon niet worden opgeslagen.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   const toggleSport = (name: string) => {
@@ -198,8 +242,8 @@ export default function ProfilePage() {
           {error && <p role="alert" className="mb-4 rounded-xl border border-red-400/40 bg-red-500/10 p-3 text-sm">{error}</p>}
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="text-sm font-semibold">Weergavenaam<input className="theme-field mt-2 w-full rounded-xl border px-3 py-3 font-normal" value={profile.displayName} onChange={(e) => update("displayName", e.target.value)} maxLength={100} required /></label>
-            <label className="text-sm font-semibold">Woonplaats<input className="theme-field mt-2 w-full rounded-xl border px-3 py-3 font-normal" value={profile.city} onChange={(e) => update("city", e.target.value)} maxLength={100} /></label>
-            <label className="text-sm font-semibold">Leeftijd<input className="theme-field mt-2 w-full rounded-xl border px-3 py-3 font-normal" type="number" min="13" max="120" value={profile.age} onChange={(e) => update("age", e.target.value)} /></label>
+            <label className="text-sm font-semibold">Woonplaats<input className="theme-field mt-2 w-full rounded-xl border px-3 py-3 font-normal" value={profile.city} onChange={(e) => update("city", e.target.value)} minLength={2} maxLength={100} required /></label>
+            <label className="text-sm font-semibold">Leeftijd<input className="theme-field mt-2 w-full rounded-xl border px-3 py-3 font-normal" type="number" min="13" max="120" value={profile.age} onChange={(e) => update("age", e.target.value)} required /></label>
             <label className="text-sm font-semibold sm:col-span-2">Over mij<textarea className="theme-field mt-2 min-h-28 w-full rounded-xl border px-3 py-3 font-normal" value={profile.bio} onChange={(e) => update("bio", e.target.value)} maxLength={500} placeholder="Vertel kort wat je leuk vindt aan sporten…" /></label>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3"><button type="button" onClick={() => fileRef.current?.click()} className="rounded-xl border px-4 py-2.5 text-sm font-semibold transition hover:border-emerald-600">Profielfoto kiezen</button>{profile.photo && <button type="button" onClick={() => update("photo", "")} className="rounded-xl border px-4 py-2.5 text-sm font-semibold">Foto verwijderen</button>}<span className="text-xs theme-muted">JPG, PNG of andere afbeelding · maximaal 1,5 MB</span></div>
@@ -208,20 +252,20 @@ export default function ProfilePage() {
           <p className="text-xs font-bold uppercase tracking-[.18em] text-emerald-600">Privacy & contact</p><h2 className="mt-1 text-xl font-bold">Jij bepaalt wie wat ziet</h2>
           <div className="mt-4 space-y-3">
             <label className="theme-muted-surface flex cursor-pointer items-start gap-3 rounded-xl border p-4"><input type="checkbox" className="mt-1 accent-emerald-600" checked={profile.publicProfile} onChange={(e) => update("publicProfile", e.target.checked)} /><span><span className="block font-semibold">Openbaar profiel</span><span className="mt-1 block text-sm theme-muted">Andere gebruikers kunnen de informatie zien die je hierboven hebt ingevuld.</span></span></label>
-            <label className="theme-muted-surface flex cursor-pointer items-start gap-3 rounded-xl border p-4"><input type="checkbox" className="mt-1 accent-emerald-600" checked={profile.allowMessages} onChange={(e) => update("allowMessages", e.target.checked)} /><span><span className="block font-semibold">Privéberichten toestaan</span><span className="mt-1 block text-sm theme-muted">Sta toe dat andere gebruikers je een privébericht sturen. De berichtenfunctie moet hiervoor nog aan de backend worden gekoppeld.</span></span></label>
+            <label className="theme-muted-surface flex cursor-pointer items-start gap-3 rounded-xl border p-4"><input type="checkbox" className="mt-1 accent-emerald-600" checked={profile.allowMessages} onChange={(e) => update("allowMessages", e.target.checked)} /><span><span className="block font-semibold">Privéberichten toestaan</span><span className="mt-1 block text-sm theme-muted">Sta toe dat je vrienden je een privébericht sturen. Staat dit uit, dan kan niemand je een nieuw bericht sturen.</span></span></label>
             <label className="theme-muted-surface flex cursor-pointer items-start gap-3 rounded-xl border p-4"><input type="checkbox" className="mt-1 accent-emerald-600" checked={profile.showFavoriteSports} onChange={(e) => update("showFavoriteSports", e.target.checked)} /><span><span className="block font-semibold">Favoriete sporten tonen</span><span className="mt-1 block text-sm theme-muted">Toon je gekozen sporten op je profiel.</span></span></label>
           </div>
         </section>
         <NotificationPreferences />
         <section className="theme-surface rounded-2xl border p-5 sm:p-7">
-          <p className="text-xs font-bold uppercase tracking-[.18em] text-emerald-600">Sportvoorkeuren</p><h2 className="mt-1 text-xl font-bold">Jouw sporten</h2><p className="mt-2 text-sm theme-muted">Deze voorkeuren worden gebruikt voor jouw persoonlijke overzicht op dit apparaat.</p>
+          <p className="text-xs font-bold uppercase tracking-[.18em] text-emerald-600">Sportvoorkeuren</p><h2 className="mt-1 text-xl font-bold">Jouw sporten</h2><p className="mt-2 text-sm theme-muted">Deze voorkeuren worden gebruikt voor jouw persoonlijke overzicht, op elk apparaat waarop je inlogt.</p>
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">{sports.filter((s) => s !== "Alles").map((sport) => <label key={sport} className={`sport-choice flex cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm font-semibold ${profile.favoriteSports.includes(sport) ? "sport-choice-active" : ""}`}><input type="checkbox" className="accent-emerald-600" checked={profile.favoriteSports.includes(sport)} onChange={() => toggleSport(sport)} />{sport}</label>)}</div>
           <p className="mt-4 text-sm theme-muted">Verborgen sporten: {profile.hiddenSports.length ? profile.hiddenSports.join(", ") : "geen"}.</p>
           <button type="button" onClick={() => setPreferencesOpen(true)} className="mt-3 rounded-xl border px-4 py-2.5 text-sm font-semibold hover:border-emerald-600">Favorieten en verborgen sporten aanpassen</button>
         </section>
         <div className="sticky bottom-3 flex items-center justify-between gap-3 rounded-2xl border p-3 backdrop-blur-xl" style={{ background: "color-mix(in srgb, var(--surface) 92%, transparent)" }}>
-          <span role="status" className="text-sm">{saved ? "Wijzigingen opgeslagen in deze browser." : "Vergeet niet je wijzigingen op te slaan."}</span>
-          <button type="submit" className="rounded-xl bg-emerald-700 px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-emerald-600">Profiel opslaan</button>
+          <span role="status" className="text-sm">{saved ? "Je wijzigingen zijn opgeslagen." : "Vergeet niet je wijzigingen op te slaan."}</span>
+          <button type="submit" disabled={!loaded || saving} className="rounded-xl bg-emerald-700 px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50">{saving ? "Opslaan…" : "Profiel opslaan"}</button>
         </div>
       </form>
     </div>
@@ -230,8 +274,6 @@ export default function ProfilePage() {
     {preferencesOpen && <SportPreferencesModal onClose={() => setPreferencesOpen(false)} onSaved={(favorite, hidden) => {
       update("favoriteSports", favorite);
       update("hiddenSports", hidden);
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ favorite, hidden }));
-      setSaved(false);
     }} />}
   </main>;
 }

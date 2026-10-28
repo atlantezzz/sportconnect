@@ -13,6 +13,19 @@ import SiteHeader from "@/components/SiteHeader";
 
 type ActivityFilter = "all" | "mine" | "joined" | "friends";
 
+type SportPreferences = { favoriet: string[]; verborgen: string[] };
+
+async function fetchSportPreferences(): Promise<SportPreferences | null> {
+  try {
+    const response = await fetch("/api/profile", { cache: "no-store" });
+    if (!response.ok) return null;
+    const profile = await response.json();
+    return { favoriet: profile.sporten?.favoriet ?? [], verborgen: profile.sporten?.verborgen ?? [] };
+  } catch {
+    return null;
+  }
+}
+
 export default function Home() {
   // Tijdelijke frontendstatus; gegevens worden niet op een server opgeslagen.
   const [activityList, setActivityList] = useState<Activity[]>([]);
@@ -41,11 +54,6 @@ export default function Home() {
   useEffect(() => {
     const storedTheme = window.localStorage.getItem("sportconnect-theme");
     if (storedTheme === "dark" || storedTheme === "light") setTheme(storedTheme);
-    try {
-      const prefs = JSON.parse(window.localStorage.getItem("sportconnect-sport-preferences") || "{}");
-      if (Array.isArray(prefs.hidden)) setHiddenSports(prefs.hidden);
-      if (Array.isArray(prefs.favorite)) setFavoriteSports(prefs.favorite);
-    } catch {}
     if (new URLSearchParams(window.location.search).get("preferences") === "1") {
       setPreferencesOpen(true);
       window.history.replaceState({}, "", window.location.pathname);
@@ -74,6 +82,12 @@ export default function Home() {
          if (!cancelled && result.user?.naam) {
            setCurrentUserName(result.user.naam);
 	   setCurrentUserId(result.user.gebruiker_id);
+         }
+
+         const preferences = await fetchSportPreferences();
+         if (!cancelled && preferences) {
+           setFavoriteSports(preferences.favoriet);
+           setHiddenSports(preferences.verborgen);
          }
        } catch (error) {
          console.error("SportConnect-sessie herstellen:", error);
@@ -543,7 +557,7 @@ export default function Home() {
           try {
             const response = await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin", cache: "no-store" });
             if (!response.ok) throw new Error("Uitloggen is niet bevestigd door de server.");
-            setCurrentUserName(null); setCurrentUserId(null); setSelectedActivityId(null); setPreferencesOpen(false); setChatLauncherOpen(false);
+            setCurrentUserName(null); setCurrentUserId(null); setSelectedActivityId(null); setPreferencesOpen(false); setChatLauncherOpen(false); setFavoriteSports([]); setHiddenSports([]);
             window.location.replace("/");
           } catch (error) { console.error("Uitloggen mislukt:", error); alert("Uitloggen is niet gelukt. Probeer het opnieuw."); }
         }}
@@ -821,6 +835,11 @@ export default function Home() {
             setCurrentUserId(userId);
             setAuthMode(null);
             if (registered) setPreferencesOpen(true);
+            void fetchSportPreferences().then((preferences) => {
+              if (!preferences) return;
+              setFavoriteSports(preferences.favoriet);
+              setHiddenSports(preferences.verborgen);
+            });
           }}
         />
       )}

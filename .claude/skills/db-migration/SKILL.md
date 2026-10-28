@@ -18,7 +18,8 @@ sudo docker exec -i sportconnect-db psql -U sportconnect -d sportconnect
 
 - `"NOTIFICATIE".doel_url` exists live but not in 001.
 - `"SPORTCONNECT_VRIENDSCHAP"` and `"SPORTCONNECT_PRIVATBERICHT"` are created at runtime by `ensure_friendship_table()` / `ensure_private_messages_table()` in `main.py`, with BIGINT ids (other tables use INT).
-- Unused tables: `RAPPORTAGE`, `GEBRUIKER_BLOKKADE`, `BERICHT_BIJLAGE`, `GEBRUIKER_SPORTVOORKEUR`.
+- Unused tables: `RAPPORTAGE`, `GEBRUIKER_BLOKKADE`, `BERICHT_BIJLAGE`.
+- `GEBRUIKER_SPORTVOORKEUR` holds sport preferences since 002: `voorkeursniveau` 3 = favoriet, 1 = verborgen.
 
 Always check with `\d` before writing a migration. Don't trust 001.
 
