@@ -27,6 +27,8 @@ services:
       COOKIE_SECURE: "true"
       API_INTERNAL_URL: http://api:8000
       DATABASE_URL: postgresql://sportconnect:${POSTGRES_PASSWORD}@db:5432/sportconnect
+      # Optional: welcome mails via Resend. Empty = mails are skipped.
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy
