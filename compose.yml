@@ -49,9 +49,9 @@ services:
       - "127.0.0.1:3000:3000"
     networks:
       - backend
-  # Cloudflare Tunnel: https://sportconnect.fit -> http://localhost:3000.
-  # Routing (public hostname) is configured in the Cloudflare dashboard; host
-  # networking lets the tunnel reach the frontend on localhost:3000.
+  # Cloudflare Tunnel: https://sportconnect.fit and www -> the frontend container.
+  # Routing (public hostnames) is configured in the Cloudflare dashboard and
+  # points at http://sportconnect-frontend:3000 on this Docker network.
   tunnel:
     image: cloudflare/cloudflared:2026.10.0
     container_name: sportconnect-tunnel
@@ -59,9 +59,10 @@ services:
     command: tunnel --no-autoupdate run
     environment:
       TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
-    network_mode: host
     depends_on:
       - frontend
+    networks:
+      - backend
 
 volumes:
   postgres_data:
