@@ -17,7 +17,7 @@ python3 -m py_compile /opt/sportconnect/backend/app/*.py /opt/sportconnect/backe
 /opt/sportconnect/backend/run-tests.sh          # backend API tests (pytest, real DB, cleans up after itself)
 ```
 
-Baseline as of 2026-10-28 (evening): tsc clean; eslint 13 errors / 14 warnings (errors are `react-hooks/set-state-in-effect`, mostly the duplicated theme loading per page; most warnings are deliberate `window.location.href = "/"` navigations, see CLAUDE.md). Don't add new ones; compare against the baseline instead of calling the old ones yours.
+Baseline as of 2026-10-28 (evening): tsc clean; eslint 13 errors / 15 warnings (errors are `react-hooks/set-state-in-effect`, mostly the duplicated theme loading per page; most warnings are deliberate `window.location.href = "/"` navigations, see CLAUDE.md). Don't add new ones; compare against the baseline instead of calling the old ones yours.
 
 ## 2. Deploy
 

@@ -10,7 +10,7 @@ from app.ages import validate_birth_date
 from app.config import APP_URL
 from app.db import AGE_SQL, get_connection
 from app.mailer import send_password_changed_email, send_password_reset_email, send_welcome_email
-from app.schemas import LoginInput, PasswordResetConfirm, PasswordResetRequest, RegisterInput
+from app.schemas import LoginInput, PasswordChange, PasswordResetConfirm, PasswordResetRequest, RegisterInput
 from app.security import (
     clear_session_cookie,
     client_ip,
@@ -221,3 +221,57 @@ def confirm_password_reset(data: PasswordResetConfirm, request: Request, respons
     set_session_cookie(response, user["gebruiker_id"], user["sessie_versie"])
     background.add_task(send_password_changed_email, user["email"], user["naam"])
     return {"user": public_user(user)}
+
+
+@router.post("/auth/password/change")
+def change_password(data: PasswordChange, request: Request, response: Response, background: BackgroundTasks):
+    """Change the password with the current one. Other devices are logged out; this one stays logged in."""
+    user_id = get_session_user_id(request)
+    key = f"user:{user_id}"  # wrong current passwords count like failed logins
+    enforce_rate_limit(failed_login_limiter, key)
+
+    with get_connection() as conn:
+        user = conn.execute(
+            f'SELECT {USER_COLUMNS}, g.wachtwoord_hash FROM "GEBRUIKER" g WHERE g.gebruiker_id = %s FOR UPDATE',
+            (user_id,),
+        ).fetchone()
+        try:
+            password_hasher.verify(user["wachtwoord_hash"], data.huidig_wachtwoord)
+        except (VerifyMismatchError, VerificationError):
+            failed_login_limiter.hit(key)
+            raise HTTPException(status_code=400, detail="Je huidige wachtwoord klopt niet.")
+        if data.nieuw_wachtwoord == data.huidig_wachtwoord:
+            raise HTTPException(status_code=422, detail="Kies een ander wachtwoord dan je huidige.")
+
+        updated = conn.execute(
+            '''
+            UPDATE "GEBRUIKER"
+            SET wachtwoord_hash = %s, sessie_versie = sessie_versie + 1, bijgewerkt_op = CURRENT_TIMESTAMP
+            WHERE gebruiker_id = %s
+            RETURNING sessie_versie
+            ''',
+            (password_hasher.hash(data.nieuw_wachtwoord), user_id),
+        ).fetchone()
+        # Open reset links no longer make sense.
+        conn.execute(
+            'UPDATE "WACHTWOORD_HERSTEL" SET gebruikt_op = NOW() WHERE gebruiker_id = %s AND gebruikt_op IS NULL',
+            (user_id,),
+        )
+
+    failed_login_limiter.reset(key)
+    set_session_cookie(response, user_id, updated["sessie_versie"])
+    background.add_task(send_password_changed_email, user["email"], user["naam"])
+    return {"detail": "Je wachtwoord is gewijzigd. Op je andere apparaten ben je uitgelogd."}
+
+
+@router.post("/auth/logout-everywhere")
+def logout_everywhere(request: Request, response: Response):
+    """End every session of this account, including the current one."""
+    user_id = get_session_user_id(request)
+    with get_connection() as conn:
+        conn.execute(
+            'UPDATE "GEBRUIKER" SET sessie_versie = sessie_versie + 1 WHERE gebruiker_id = %s',
+            (user_id,),
+        )
+    clear_session_cookie(response)
+    return {"detail": "Je bent op al je apparaten uitgelogd."}

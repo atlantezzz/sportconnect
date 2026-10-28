@@ -126,3 +126,59 @@ def test_mail_templates_escape_names_and_contain_links():
     assert html.count("wachtwoord-herstellen?token=abc") == 3 and "60 minuten" in text
     _, html, _ = password_changed_email("Eva")
     assert "/wachtwoord-vergeten" in html
+
+
+def login_client(email: str, password: str):
+    client = make_client()
+    assert client.post("/auth/login", json={"email": email, "wachtwoord": password}).status_code == 200
+    return client
+
+
+def test_change_password_keeps_this_session_and_ends_others(new_account, sent_mails):
+    email, old = new_account.payload["email"], new_account.payload["wachtwoord"]
+    other_device = login_client(email, old)
+    response = new_account.post("/auth/password/change",
+                                json={"huidig_wachtwoord": old, "nieuw_wachtwoord": "gewijzigd-wachtwoord-1"})
+    assert response.status_code == 200, response.text
+    assert new_account.get("/auth/me").status_code == 200  # gets a fresh cookie
+    assert other_device.get("/auth/me").status_code == 401
+    assert ("changed", email, None) in sent_mails
+    assert make_client().post("/auth/login", json={"email": email, "wachtwoord": old}).status_code == 401
+    login_client(email, "gewijzigd-wachtwoord-1")
+
+
+def test_change_password_needs_correct_current_password(new_account, sent_mails):
+    response = new_account.post("/auth/password/change",
+                                json={"huidig_wachtwoord": "fout", "nieuw_wachtwoord": "gewijzigd-wachtwoord-1"})
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Je huidige wachtwoord klopt niet."
+    assert sent_mails == []
+
+
+def test_change_password_rejects_same_and_short(new_account):
+    old = new_account.payload["wachtwoord"]
+    assert new_account.post("/auth/password/change", json={"huidig_wachtwoord": old, "nieuw_wachtwoord": old}).status_code == 422
+    assert new_account.post("/auth/password/change", json={"huidig_wachtwoord": old, "nieuw_wachtwoord": "kort"}).status_code == 422
+
+
+def test_wrong_current_password_is_rate_limited(new_account):
+    for _ in range(5):
+        new_account.post("/auth/password/change", json={"huidig_wachtwoord": "fout", "nieuw_wachtwoord": "gewijzigd-wachtwoord-1"})
+    blocked = new_account.post("/auth/password/change",
+                               json={"huidig_wachtwoord": new_account.payload["wachtwoord"], "nieuw_wachtwoord": "gewijzigd-wachtwoord-1"})
+    assert blocked.status_code == 429
+
+
+def test_change_password_requires_login(anon):
+    assert anon.post("/auth/password/change", json={"huidig_wachtwoord": "x", "nieuw_wachtwoord": "gewijzigd-wachtwoord-1"}).status_code == 401
+    assert anon.post("/auth/logout-everywhere").status_code == 401
+
+
+def test_logout_everywhere(new_account):
+    email, password = new_account.payload["email"], new_account.payload["wachtwoord"]
+    other_device = login_client(email, password)
+    response = new_account.post("/auth/logout-everywhere")
+    assert response.status_code == 200
+    assert "sportconnect_session=" in response.headers["set-cookie"]
+    assert other_device.get("/auth/me").status_code == 401
+    login_client(email, password)  # logging in again works

@@ -107,3 +107,8 @@ class PasswordResetRequest(BaseModel):
 class PasswordResetConfirm(BaseModel):
     token: str = Field(min_length=20, max_length=200)
     wachtwoord: str = Field(min_length=8, max_length=128)
+
+
+class PasswordChange(BaseModel):
+    huidig_wachtwoord: str = Field(min_length=1, max_length=128)
+    nieuw_wachtwoord: str = Field(min_length=8, max_length=128)

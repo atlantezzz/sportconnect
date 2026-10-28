@@ -122,6 +122,88 @@ function NotificationPreferences() {
   );
 }
 
+// Change password (other devices are logged out) and log out on every device.
+function AccountSecurity() {
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [repeat, setRepeat] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function changePassword(event: FormEvent) {
+    event.preventDefault();
+    if (busy) return;
+    setMessage(""); setError("");
+    if (next.length < 8) { setError("Je nieuwe wachtwoord moet minimaal 8 tekens bevatten."); return; }
+    if (next !== repeat) { setError("De nieuwe wachtwoorden komen niet overeen."); return; }
+    setBusy(true);
+    try {
+      const response = await fetch("/api/auth/password/change", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ huidig_wachtwoord: current, nieuw_wachtwoord: next }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(typeof data?.detail === "string" ? data.detail : "Je wachtwoord kon niet worden gewijzigd.");
+      setMessage(data?.detail ?? "Je wachtwoord is gewijzigd.");
+      setCurrent(""); setNext(""); setRepeat("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Je wachtwoord kon niet worden gewijzigd.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function logoutEverywhere() {
+    setLoggingOut(true); setError("");
+    try {
+      const response = await fetch("/api/auth/logout-everywhere", { method: "POST" });
+      if (!response.ok) throw new Error();
+      window.location.href = "/";
+    } catch {
+      setError("Uitloggen op alle apparaten is niet gelukt. Probeer het opnieuw.");
+      setLoggingOut(false);
+    }
+  }
+
+  const field = "theme-field mt-2 w-full rounded-xl border px-3 py-3 font-normal";
+  return (
+    <section className="theme-surface rounded-2xl border p-5 sm:p-7" aria-labelledby="security-title">
+      <p className="text-xs font-bold uppercase tracking-[.18em] text-emerald-600">Account</p>
+      <h2 id="security-title" className="mt-1 text-xl font-bold">Wachtwoord en beveiliging</h2>
+      <form onSubmit={changePassword} className="mt-4 grid gap-4 sm:grid-cols-3">
+        <label className="text-sm font-semibold">Huidig wachtwoord<input type="password" autoComplete="current-password" required maxLength={128} value={current} onChange={(e) => setCurrent(e.target.value)} className={field} /></label>
+        <label className="text-sm font-semibold">Nieuw wachtwoord<input type="password" autoComplete="new-password" required minLength={8} maxLength={128} value={next} onChange={(e) => setNext(e.target.value)} className={field} /></label>
+        <label className="text-sm font-semibold">Herhaal nieuw wachtwoord<input type="password" autoComplete="new-password" required minLength={8} maxLength={128} value={repeat} onChange={(e) => setRepeat(e.target.value)} className={field} /></label>
+        <div className="flex flex-wrap items-center gap-3 sm:col-span-3">
+          <button type="submit" disabled={busy} className="rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60">{busy ? "Opslaan…" : "Wachtwoord wijzigen"}</button>
+          <span className="text-xs theme-muted">Je blijft hier ingelogd; op je andere apparaten word je uitgelogd.</span>
+        </div>
+      </form>
+      {message && <p role="status" className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">{message}</p>}
+      {error && <p role="alert" className="mt-4 rounded-xl border border-red-400/40 bg-red-500/10 p-3 text-sm">{error}</p>}
+
+      <div className="theme-muted-surface mt-6 flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="font-semibold">Overal uitloggen</p>
+          <p className="mt-1 text-sm theme-muted">Ben je ergens ingelogd gebleven, bijvoorbeeld op een andere computer? Log dan op al je apparaten uit, ook hier.</p>
+        </div>
+        {confirmLogout ? (
+          <div className="flex shrink-0 gap-2">
+            <button type="button" onClick={() => setConfirmLogout(false)} className="rounded-xl border px-4 py-2.5 text-sm font-semibold">Annuleren</button>
+            <button type="button" onClick={() => void logoutEverywhere()} disabled={loggingOut} className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-60">{loggingOut ? "Uitloggen…" : "Ja, overal uitloggen"}</button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setConfirmLogout(true)} className="shrink-0 rounded-xl border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-500/10">Overal uitloggen</button>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -239,6 +321,7 @@ export default function ProfilePage() {
         </div>
         <div className="mt-6 border-t pt-4 text-sm"><p className="font-semibold">Account</p><p className="mt-1 break-all theme-muted">{email}</p></div>
       </aside>
+      <div className="space-y-6">
       <form onSubmit={save} className="space-y-6">
         <section className="theme-surface rounded-2xl border p-5 sm:p-7">
           <div className="mb-5"><p className="text-xs font-bold uppercase tracking-[.18em] text-emerald-600">Profiel</p><h2 className="mt-1 text-2xl font-bold">Profielgegevens</h2><p className="mt-2 text-sm theme-muted">Bepaal welke informatie je over jezelf deelt met andere sporters.</p></div>
@@ -271,6 +354,8 @@ export default function ProfilePage() {
           <button type="submit" disabled={!loaded || saving} className="rounded-xl bg-emerald-700 px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50">{saving ? "Opslaan…" : "Profiel opslaan"}</button>
         </div>
       </form>
+      <AccountSecurity />
+      </div>
     </div>
     {preferencesOpen && <SportPreferencesModal onClose={() => setPreferencesOpen(false)} onSaved={(favorite, hidden) => {
       update("favoriteSports", favorite);
