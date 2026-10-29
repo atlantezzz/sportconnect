@@ -201,7 +201,8 @@ export const sports = [
   "Wandelen", "Fietsen", "Wielrennen", "Zwemmen", "Tennis", "Badminton",
   "Volleybal", "Hockey", "Yoga", "Krachttraining", "Trailrunning",
   "Mountainbiken", "Tafeltennis", "Handbal", "Rugby", "Golf", "Boksen",
-  "Kickboksen", "Judo", "Klimmen", "Boulderen", "Dansen", "Roeien", "Anders",
+  "Kickboksen", "Judo", "Klimmen", "Boulderen", "Dansen", "Roeien", "Vissen",
+  "Anders",
 ];
 
 export const sportEmoji: Record<string, string> = {
@@ -212,7 +213,7 @@ export const sportEmoji: Record<string, string> = {
   "Trailrunning": "🏃", "Mountainbiken": "🚵", "Tafeltennis": "🏓",
   "Handbal": "🤾", "Rugby": "🏉", "Golf": "⛳", "Boksen": "🥊",
   "Kickboksen": "🥊", "Judo": "🥋", "Klimmen": "🧗", "Boulderen": "🧗",
-  "Dansen": "💃", "Roeien": "🚣", "Anders": "＋",
+  "Dansen": "💃", "Roeien": "🚣", "Vissen": "🎣", "Anders": "＋",
 };
 
 export const sportColors: Record<string, string> = {
