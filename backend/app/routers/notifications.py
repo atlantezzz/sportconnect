@@ -15,7 +15,7 @@ def get_notifications(request: Request, limit: int = 30):
     with get_connection() as conn:
         rows = conn.execute(
             'SELECT notificatie_id, type, titel, inhoud, activiteit_id, '
-            "doel_url, gelezen_op, aangemaakt_op AT TIME ZONE 'UTC' AS aangemaakt_op "
+            "doel_url, gelezen_op, aangemaakt_op "
             'FROM "NOTIFICATIE" '
             'WHERE gebruiker_id = %s '
             'ORDER BY aangemaakt_op DESC LIMIT %s',

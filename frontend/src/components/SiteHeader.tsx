@@ -141,7 +141,7 @@ export default function SiteHeader({ theme, onThemeToggle, userName, showMapTogg
     }
   }
 
-  function home() { if (onHome) onHome(); else window.location.href = "/"; }
+  function home() { if (onHome) onHome(); else router.push("/"); }
   async function logout() { if (onLogout) await onLogout(); else { try { await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }); } finally { window.location.href = "/"; } } }
 
   const unreadNotifications = notifications.filter((n) => !n.read).length;

@@ -11,7 +11,7 @@ set -a
 source "$ENV_FILE"
 set +a
 
-docker compose run --rm --no-deps -T \
+docker compose run --rm --no-deps -T --user root \
   -v "$PWD/backend:/app" -w /app \
   -e SC_TEST_EMAIL -e SC_TEST_PASSWORD -e SC_TEST2_EMAIL -e SC_TEST2_PASSWORD \
   -e RESEND_API_KEY= \

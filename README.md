@@ -98,7 +98,7 @@ Tabelnamen zijn Nederlands en in hoofdletters. De belangrijkste:
 
 - Migraties staan in `migrations/` en voer je met de hand uit:
   `docker exec -i sportconnect-db psql -U sportconnect -d sportconnect -v ON_ERROR_STOP=1 < migrations/NNN_naam.sql`
-- `001` t/m `005` op volgorde uitvoeren op een lege database geeft precies het schema van de live database.
+- `001` t/m `006` op volgorde uitvoeren op een lege database geeft precies het schema van de live database.
 - Maak vóór een migratie een back-up in `backups/db/` (die map staat niet in Git).
 - Verwijder nooit het volume `postgres_data` (dus geen `docker compose down -v`).
 

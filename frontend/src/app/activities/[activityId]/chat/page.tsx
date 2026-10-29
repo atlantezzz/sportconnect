@@ -187,7 +187,6 @@ function ActivityChatContent() {
         theme={theme}
         onThemeToggle={() => setTheme((value) => value === "light" ? "dark" : "light")}
         userName={userName}
-        onHome={() => { window.location.href = "/"; }}
       />
       <div className="chat-page-body" style={{ padding: "24px 16px", flex: 1, minHeight: 0 }}>
       <div className="chat-workspace">
@@ -205,7 +204,7 @@ function ActivityChatContent() {
             const response = await fetch(`/api/activities/${activityId}/join`, { method: "DELETE", credentials: "same-origin" });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(data.detail || data.error || "Afmelden is niet gelukt.");
-            window.location.href = "/";
+            router.push("/");
           } catch (err) { setError(err instanceof Error ? err.message : "Afmelden is niet gelukt."); }
           finally { setLeaving(false); }
         }}>{leaving ? "Afmelden…" : "Activiteit verlaten"}</button>}

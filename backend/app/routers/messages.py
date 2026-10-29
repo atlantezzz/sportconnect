@@ -92,7 +92,7 @@ def get_chat_overview(request: Request):
             '''
             SELECT a.activiteit_id, a.titel, a.woonplaats, a.status, s.naam AS sport,
                    lm.afzender_naam, lm.inhoud,
-                   lm.verzonden_op AT TIME ZONE 'UTC' AS verzonden_op
+                   lm.verzonden_op
             FROM "ACTIVITEIT" a
             JOIN "SPORT" s ON s.sport_id = a.sport_id
             LEFT JOIN "GROEPSCHAT" gc ON gc.activiteit_id = a.activiteit_id

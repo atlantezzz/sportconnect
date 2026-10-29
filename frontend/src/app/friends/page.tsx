@@ -55,7 +55,7 @@ export default function FriendsPage() {
   }
   const surface = "theme-surface rounded-2xl border p-5 shadow-sm";
   return <main className="min-h-screen theme-page">
-    <SiteHeader theme={theme} onThemeToggle={() => setTheme(v => v === "light" ? "dark" : "light")} userName={name} onHome={() => { window.location.href = "/"; }} onLogout={async () => { const r = await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }); if (r.ok) window.location.replace("/"); }} />
+    <SiteHeader theme={theme} onThemeToggle={() => setTheme(v => v === "light" ? "dark" : "light")} userName={name} onLogout={async () => { const r = await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }); if (r.ok) window.location.replace("/"); }} />
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="mb-6"><p className="text-xs font-bold uppercase tracking-[.16em] text-emerald-600">Samen sporten</p><h1 className="mt-1 text-3xl font-black">Vrienden</h1><p className="mt-2 theme-muted">Voeg mensen toe en ontdek activiteiten die zij organiseren of bijwonen.</p></div>
       {error && <p role="alert" className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-500">{error}</p>}

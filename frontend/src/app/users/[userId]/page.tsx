@@ -106,7 +106,6 @@ function PublicProfileContent() {
         theme={theme}
         onThemeToggle={toggleTheme}
         userName={myName}
-        onHome={() => { window.location.href = "/"; }}
         onLogout={async () => { const r = await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }); if (r.ok) window.location.replace("/"); }}
       />
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">

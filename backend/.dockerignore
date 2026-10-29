@@ -1,0 +1,11 @@
+__pycache__
+*.pyc
+.pytest_cache
+tests
+run-tests.sh
+requirements-dev.txt
+.env
+.env.*
+*.bak
+*.backup*
+*.before-*

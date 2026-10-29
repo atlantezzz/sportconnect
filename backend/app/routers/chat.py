@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from fastapi import APIRouter, HTTPException, Request
 
+from app.config import LOCAL_TIMEZONE
 from app.db import get_connection
 from app.notifications import create_notifications
 from app.schemas import ChatMessageInput
@@ -45,10 +46,10 @@ def _ensure_chat_member(conn, activity: dict, user_id: int) -> tuple[int, int]:
     conn.execute(
         '''
         INSERT INTO "GROEPSCHAT" (activiteit_id, aangemaakt_op, verloopt_op)
-        VALUES (%s, CURRENT_TIMESTAMP, %s)
+        VALUES (%s, CURRENT_TIMESTAMP, %s::timestamp AT TIME ZONE %s)
         ON CONFLICT (activiteit_id) DO NOTHING
         ''',
-        (activity["activiteit_id"], activity["starttijd"] + timedelta(days=7)),
+        (activity["activiteit_id"], activity["starttijd"] + timedelta(days=7), LOCAL_TIMEZONE),
     )
     chat_id = _existing_chat_id(conn, activity["activiteit_id"])
     member = conn.execute(
@@ -91,7 +92,7 @@ def get_activity_chat_messages(activity_id: int, request: Request, after_id: int
             f'''
             SELECT * FROM (
                 SELECT b.bericht_id, b.inhoud,
-                       b.verzonden_op AT TIME ZONE 'UTC' AS verzonden_op,
+                       b.verzonden_op,
                        cl.gebruiker_id, g.naam AS afzender_naam
                 FROM "BERICHT" b
                 JOIN "CHATLID" cl ON cl.chatlid_id = b.chatlid_id
@@ -124,7 +125,7 @@ def post_activity_chat_message(activity_id: int, request: Request, data: ChatMes
             '''
             INSERT INTO "BERICHT" (chat_id, chatlid_id, inhoud, verzonden_op)
             VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
-            RETURNING bericht_id, inhoud, verzonden_op AT TIME ZONE 'UTC' AS verzonden_op
+            RETURNING bericht_id, inhoud, verzonden_op
             ''',
             (chat_id, chatlid_id, inhoud),
         ).fetchone()

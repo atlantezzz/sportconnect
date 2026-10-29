@@ -303,7 +303,6 @@ export default function ProfilePage() {
       theme={theme}
       onThemeToggle={() => { const next = theme === "light" ? "dark" : "light"; setTheme(next); document.documentElement.dataset.theme = next; localStorage.setItem("sportconnect-theme", next); }}
       userName={profile.displayName || email || "Ingelogd"}
-      onHome={() => { window.location.href = "/"; }}
       onLogout={async () => { try { const response = await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin", cache: "no-store" }); if (!response.ok) throw new Error("Uitloggen is niet bevestigd door de server."); router.replace("/"); window.location.assign("/"); } catch (e) { setError(e instanceof Error ? e.message : "Uitloggen is niet gelukt."); } }}
     />
     <div className="mx-auto grid max-w-6xl gap-7 px-4 py-8 md:grid-cols-[260px_1fr] md:px-6">
