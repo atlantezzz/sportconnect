@@ -8,8 +8,8 @@ Dutch web app for finding and organising sport activities together (map, activit
 - `tools/ui-audit/run.sh "<ids>"` — headless Chromium (Playwright in Docker): main user flows plus screenshots of every screen in light/dark, desktop/phone, with an axe-core contrast check, console errors and failed requests. Needs some `[TEST]` activities. Run it after UI changes; the owner re-tests everything after each change.
 - `backend/tests/` — pytest API tests (in-process TestClient, real DB, both test accounts). Run `backend/run-tests.sh`; run them after every backend change.
 - `frontend/` — Next.js 16 (App Router, Turbopack, Tailwind 4), React 19, react-leaflet. Read `frontend/AGENTS.md`: this Next.js version differs from training data; check `frontend/node_modules/next/dist/docs/` before using unfamiliar APIs.
-- `frontend/src/app/api/**/route.ts` — thin proxies that forward the browser's cookie to the backend (`API_INTERNAL_URL`, default `http://api:8000`). The browser never talks to FastAPI directly.
-- `migrations/` — SQL schema: `001`–`004` in order rebuild the live schema (see the `db-migration` skill). `backend/scripts/verwijder_testdata.sql` removes `[TEST]` data.
+- `frontend/src/app/api/[...path]/route.ts` — one catch-all proxy that forwards the browser's cookie and client IP to the backend (`API_INTERNAL_URL`, default `http://api:8000`) and passes `Set-Cookie` back. Only the backend areas in `ALLOWED_ROOTS` are reachable; FastAPI's English 422 lists become one Dutch `detail`. Geocode routes (`api/geocode/*`) are separate files. The browser never talks to FastAPI directly.
+- `migrations/` — SQL schema: `001`–`005` in order rebuild the live schema (see the `db-migration` skill). `backend/scripts/verwijder_testdata.sql` removes `[TEST]` data.
 - `compose.yml` — services `db` (postgres:17), `api` (:8000), `frontend` (:3000), `tunnel` (cloudflared); api/frontend ports bound to 127.0.0.1. Secrets in `.env` (POSTGRES_PASSWORD, SESSION_SECRET, GEOAPIFY_API_KEY, RESEND_API_KEY, CLOUDFLARE_TUNNEL_TOKEN) — never print or copy it, and never put a secret in tracked files.
 - **Live** since 2026-10-28 at https://sportconnect.fit (and www) via a Cloudflare Tunnel (`tunnel` service). Routing is set in the Cloudflare dashboard (Zero Trust → Tunnels) to `http://sportconnect-frontend:3000`, so the tunnel must stay on the `backend` Docker network. Anything deployed is public immediately.
 
@@ -19,7 +19,8 @@ Dutch web app for finding and organising sport activities together (map, activit
 - The current user always comes from `get_session_user_id(request)` (signed cookie `sportconnect_session`), never from the request body.
 - Errors: `raise HTTPException(status_code=..., detail="<Dutch sentence>.")`; the frontend reads `data.detail`.
 - Writes inside `with get_connection() as conn:` commit when the block exits; explicit `conn.commit()` is optional.
-- Notify users via `create_notification(conn, user_id, categorie, titel, inhoud, activiteit_id=..., doel_url=...)`; categories are in `NOTIFICATION_CATEGORIES`.
+- Notify users via `create_notification(conn, user_id, categorie, titel, inhoud, activiteit_id=..., doel_url=...)`, or `create_notifications(conn, [user_ids], ...)` for several recipients in one query; categories are in `NOTIFICATION_CATEGORIES`.
+- `get_connection()` hands out a connection from a `psycopg_pool` pool (max 20); always use it as `with get_connection() as conn:`.
 - Activity status values: `OPEN`, `GEANNULEERD`. Activity `niveau`: `Alle niveaus`, `Beginner`, `Gemiddeld`, `Gevorderd`.
 - `GET /activities` requires login, hides activities that started more than 3 hours ago, and returns cancelled ones only to their organizer and participants. `GET /activities/{id}` uses the same rules (404 otherwise); the settings page loads its activity with it.
 - Locations: address search (`/api/geocode/autocomplete`) or a point picked on the map (`LocationMapPicker`, reverse geocoded via `/api/geocode/reverse`, Geoapify); both give the same location shape.
@@ -33,11 +34,11 @@ Dutch web app for finding and organising sport activities together (map, activit
 ## Known quirks (don't "fix" silently; mention them)
 
 - Frontend activity IDs are `100000 + activiteit_id` (leftover from sample data); subtract before calling the API.
-- Rate limits (login per e-mail/IP, register per IP) are in memory in the single API process; they reset on restart. The client IP comes from `X-Forwarded-For`, set by the Next.js auth proxies.
+- Rate limits (login per e-mail/IP, register per IP) are in memory in the single API process; they reset on restart. The client IP comes from `X-Forwarded-For`, set by the Next.js proxy (from `CF-Connecting-IP`).
 - `PUT /activities/{id}` only updates fields present in the body (omitted = unchanged, explicit `null` = cleared); `titel`, `starttijd` and `maximaal_aantal_deelnemers` are always required. The settings page uses the same address search as the create form and always sends the full address.
 - Sport list and emoji/colours are hardcoded in `frontend/src/data/activities.ts` and must match the `"SPORT"` table names.
 - Theme (`data-theme` on `<html>`, localStorage `sportconnect-theme`) and the `/api/auth/me` check are duplicated in each page.
-- Navigating to `/` with `router.push("/")` showed a 404 in the browser (reported 2026-10-28, root cause not found; the server's RSC response for `/` is fine, suspect `partialPrefetching`). Links to the home page use `window.location.href = "/"` instead. Exception: the activity settings page runs inside an iframe overlay and still uses `router.push("/")`.
+- Navigating to `/` with `router.push("/")` showed a 404 in the browser (reported 2026-10-28); links to the home page use `window.location.href = "/"` instead. Exception: the activity settings page runs inside an iframe overlay and still uses `router.push("/")`. Likely cause found 2026-10-29: with `cacheComponents`, Next.js hides pages with React `<Activity>` instead of unmounting them and re-runs effects on return; react-leaflet then reuses its removed map and crashes ("This page couldn't load"). The Leaflet components now render the map only while `useIsShown()` (`src/lib/useIsShown.ts`) is true. Any library that keeps a DOM instance in an effect needs the same treatment.
 
 ## Notion (project management)
 

@@ -181,7 +181,7 @@ export default function SiteHeader({ theme, onThemeToggle, userName, showMapTogg
           {notificationsOpen && <div className="notification-dropdown theme-surface absolute right-0 top-12 z-[100] w-[min(360px,calc(100vw-24px))] overflow-hidden rounded-2xl border shadow-2xl" role="dialog" aria-label="Meldingen">
             <div className="flex items-center justify-between border-b p-4"><div><h2 className="font-bold">Meldingen</h2><p className="text-xs theme-muted">Updates van SportConnect</p></div><button type="button" onClick={async () => {
               try {
-                const response = await fetch("/api/notifications", { method: "POST" });
+                const response = await fetch("/api/notifications/read-all", { method: "POST" });
                 if (response.ok) {
                   setNotifications((items) => items.map((n) => ({ ...n, read: true })));
                 }

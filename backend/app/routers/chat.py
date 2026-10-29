@@ -3,7 +3,7 @@ from datetime import timedelta
 from fastapi import APIRouter, HTTPException, Request
 
 from app.db import get_connection
-from app.notifications import create_notification
+from app.notifications import create_notifications
 from app.schemas import ChatMessageInput
 from app.security import get_session_user_id
 
@@ -140,17 +140,14 @@ def post_activity_chat_message(activity_id: int, request: Request, data: ChatMes
             ''',
             (activity_id, activity_id),
         ).fetchall()
-        for recipient in recipients:
-            if recipient["gebruiker_id"] == user_id:
-                continue
-            create_notification(
-                conn,
-                recipient["gebruiker_id"],
-                "group_chat",
-                "Nieuw groepschatbericht",
-                f"{sender_name} heeft een bericht geplaatst.",
-                activiteit_id=activity_id,
-                bericht_id=message["bericht_id"],
-            )
+        create_notifications(
+            conn,
+            [r["gebruiker_id"] for r in recipients if r["gebruiker_id"] != user_id],
+            "group_chat",
+            "Nieuw groepschatbericht",
+            f"{sender_name} heeft een bericht geplaatst.",
+            activiteit_id=activity_id,
+            bericht_id=message["bericht_id"],
+        )
 
     return {**message, "gebruiker_id": user_id, "afzender_naam": sender["naam"] if sender else "Gebruiker"}

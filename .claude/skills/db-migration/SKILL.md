@@ -14,7 +14,7 @@ sudo docker exec -i sportconnect-db psql -U sportconnect -d sportconnect
 
 ## The live DB is the source of truth
 
-Running `001`–`004` in order on an empty database gives exactly the live schema (checked 2026-10-28 with a `pg_dump -s` diff on a scratch database). Re-run that check after a new migration. Notes:
+Running `001`–`005` in order on an empty database gives exactly the live schema (checked 2026-10-28 with a `pg_dump -s` diff on a scratch database). Re-run that check after a new migration. Notes:
 
 - Live also has a leftover table `"SPORTCONNECT_PRIVAT_BERICHT_backup_20261026"`; no migration creates it on purpose.
 - `"SPORTCONNECT_VRIENDSCHAP"` and `"SPORTCONNECT_PRIVATBERICHT"` use BIGINT ids (other tables INT); since 003 they are defined in a migration instead of being created by the backend.

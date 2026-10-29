@@ -5,6 +5,7 @@ import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-lea
 import { divIcon, type LeafletEvent, type Marker as LeafletMarker } from "leaflet";
 import { ATTRIBUTION, TILE_URL } from "@/components/LeafletActivityMap";
 import { useDocumentTheme } from "@/lib/useDocumentTheme";
+import { useIsShown } from "@/lib/useIsShown";
 
 type Props = {
   position: [number, number] | null;
@@ -36,26 +37,29 @@ function FollowPosition({ position }: { position: Props["position"] }) {
 
 export default function LeafletLocationPicker({ position, onPick }: Props) {
   const theme = useDocumentTheme();
+  const shown = useIsShown();
   return (
     <div className="activity-map location-picker-map h-full w-full" data-map-theme={theme}>
-      <MapContainer center={position ?? DEFAULT_CENTER} zoom={position ? 15 : 12} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
-        <TileLayer attribution={ATTRIBUTION} url={TILE_URL} maxZoom={19} />
-        <ClickToPick onPick={onPick} />
-        <FollowPosition position={position} />
-        {position && (
-          <Marker
-            position={position}
-            icon={PICK_ICON}
-            draggable
-            eventHandlers={{
-              dragend: (event: LeafletEvent) => {
-                const point = (event.target as LeafletMarker).getLatLng();
-                onPick(point.lat, point.lng);
-              },
-            }}
-          />
-        )}
-      </MapContainer>
+      {shown && (
+        <MapContainer center={position ?? DEFAULT_CENTER} zoom={position ? 15 : 12} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
+          <TileLayer attribution={ATTRIBUTION} url={TILE_URL} maxZoom={19} />
+          <ClickToPick onPick={onPick} />
+          <FollowPosition position={position} />
+          {position && (
+            <Marker
+              position={position}
+              icon={PICK_ICON}
+              draggable
+              eventHandlers={{
+                dragend: (event: LeafletEvent) => {
+                  const point = (event.target as LeafletMarker).getLatLng();
+                  onPick(point.lat, point.lng);
+                },
+              }}
+            />
+          )}
+        </MapContainer>
+      )}
     </div>
   );
 }

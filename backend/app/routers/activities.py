@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from app.config import LOCAL_TIMEZONE
 from app.db import ACTIVITY_NOT_PAST_SQL, get_connection
-from app.notifications import create_notification
+from app.notifications import create_notification, create_notifications
 from app.schemas import ActivityCreate, ActivityUpdate, OrganizerTransfer
 from app.security import get_session_user_id
 
@@ -227,15 +227,14 @@ def update_activity(activity_id: int, request: Request, changes: ActivityUpdate)
             'SELECT DISTINCT gebruiker_id FROM "ACTIVITEIT_DEELNEMER" WHERE activiteit_id = %s AND gebruiker_id <> %s',
             (activity_id, user_id),
         ).fetchall()
-        for recipient in recipients:
-            create_notification(
-                conn,
-                recipient["gebruiker_id"],
-                "activity_changes",
-                "Activiteit gewijzigd",
-                f'De activiteit "{updated["titel"]}" is gewijzigd.',
-                activiteit_id=activity_id,
-            )
+        create_notifications(
+            conn,
+            [r["gebruiker_id"] for r in recipients],
+            "activity_changes",
+            "Activiteit gewijzigd",
+            f'De activiteit "{updated["titel"]}" is gewijzigd.',
+            activiteit_id=activity_id,
+        )
     return updated
 
 
@@ -447,13 +446,12 @@ def cancel_activity(activity_id: int, request: Request):
             'SELECT DISTINCT gebruiker_id FROM "ACTIVITEIT_DEELNEMER" WHERE activiteit_id = %s AND gebruiker_id <> %s',
             (activity_id, user_id),
         ).fetchall()
-        for recipient in recipients:
-            create_notification(
-                conn,
-                recipient["gebruiker_id"],
-                "activity_changes",
-                "Activiteit geannuleerd",
-                f'De activiteit "{activity["titel"]}" is geannuleerd.',
-                activiteit_id=activity_id,
-            )
+        create_notifications(
+            conn,
+            [r["gebruiker_id"] for r in recipients],
+            "activity_changes",
+            "Activiteit geannuleerd",
+            f'De activiteit "{activity["titel"]}" is geannuleerd.',
+            activiteit_id=activity_id,
+        )
     return {"cancelled": True}

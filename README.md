@@ -24,7 +24,7 @@ De app is in ontwikkeling en draait nu alleen lokaal op de server. Publieke toeg
 | Adressen | Geoapify (autocomplete en geocoding, via de frontend-proxy) |
 | Draaien | Docker Compose |
 
-De browser praat alleen met de frontend. De routes in `frontend/src/app/api/**/route.ts` sturen verzoeken met de sessiecookie door naar de FastAPI-backend.
+De browser praat alleen met de frontend. Eén catch-all route, `frontend/src/app/api/[...path]/route.ts`, stuurt verzoeken met de sessiecookie door naar de FastAPI-backend; alleen de adresroutes (`api/geocode/*`) zijn aparte bestanden.
 
 ## Mappen
 
@@ -98,7 +98,7 @@ Tabelnamen zijn Nederlands en in hoofdletters. De belangrijkste:
 
 - Migraties staan in `migrations/` en voer je met de hand uit:
   `docker exec -i sportconnect-db psql -U sportconnect -d sportconnect -v ON_ERROR_STOP=1 < migrations/NNN_naam.sql`
-- `001` t/m `004` op volgorde uitvoeren op een lege database geeft precies het schema van de live database.
+- `001` t/m `005` op volgorde uitvoeren op een lege database geeft precies het schema van de live database.
 - Maak vóór een migratie een back-up in `backups/db/` (die map staat niet in Git).
 - Verwijder nooit het volume `postgres_data` (dus geen `docker compose down -v`).
 

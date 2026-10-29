@@ -6,6 +6,7 @@ import { divIcon, latLngBounds } from "leaflet";
 import type { Activity } from "@/types/activity";
 import { sportEmoji } from "@/data/activities";
 import { useDocumentTheme } from "@/lib/useDocumentTheme";
+import { useIsShown } from "@/lib/useIsShown";
 
 type Props = {
   activities: Activity[];
@@ -63,6 +64,7 @@ export default function LeafletActivityMap({
   className = "",
 }: Props) {
   const theme = useDocumentTheme();
+  const shown = useIsShown();
   const locatedActivities = useMemo(
     () =>
       activities.filter(
@@ -82,36 +84,38 @@ export default function LeafletActivityMap({
 
   return (
     <div className={`activity-map h-full w-full ${className}`} data-map-theme={theme}>
-      <MapContainer
-        center={DEFAULT_CENTER}
-        zoom={10}
-        scrollWheelZoom
-        style={{ height: "100%", width: "100%" }}
-      >
-        <TileLayer attribution={ATTRIBUTION} url={TILE_URL} maxZoom={19} />
+      {shown && (
+        <MapContainer
+          center={DEFAULT_CENTER}
+          zoom={10}
+          scrollWheelZoom
+          style={{ height: "100%", width: "100%" }}
+        >
+          <TileLayer attribution={ATTRIBUTION} url={TILE_URL} maxZoom={19} />
 
-        <FitActivities activities={locatedActivities} />
+          <FitActivities activities={locatedActivities} />
 
-        {locatedActivities.map((activity) => {
-          const selected = activity.id === selectedActivityId;
-          return (
-            <Marker
-              key={activity.id}
-              position={[activity.latitude!, activity.longitude!]}
-              icon={sportPin(activity, selected)}
-              zIndexOffset={selected ? 1000 : 0}
-              keyboard
-              eventHandlers={{
-                click: () => onActivityClick?.(activity.id),
-                keypress: (event) => {
-                  const key = (event.originalEvent as KeyboardEvent).key;
-                  if (key === "Enter" || key === " ") onActivityClick?.(activity.id);
-                },
-              }}
-            />
-          );
-        })}
-      </MapContainer>
+          {locatedActivities.map((activity) => {
+            const selected = activity.id === selectedActivityId;
+            return (
+              <Marker
+                key={activity.id}
+                position={[activity.latitude!, activity.longitude!]}
+                icon={sportPin(activity, selected)}
+                zIndexOffset={selected ? 1000 : 0}
+                keyboard
+                eventHandlers={{
+                  click: () => onActivityClick?.(activity.id),
+                  keypress: (event) => {
+                    const key = (event.originalEvent as KeyboardEvent).key;
+                    if (key === "Enter" || key === " ") onActivityClick?.(activity.id);
+                  },
+                }}
+              />
+            );
+          })}
+        </MapContainer>
+      )}
     </div>
   );
 }
